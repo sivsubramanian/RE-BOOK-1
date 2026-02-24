@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-size: 16px;
+  }
+  
+  @media (min-width: 640px) {
+    html {
+      font-size: 18px;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    html {
+      font-size: 21px;
+    }
+  }
+  
+  :root {
+    --background: 220 20% 10%;
+    --foreground: 0 0% 95%;
+
+    --card: 220 20% 13%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 220 20% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 160 84% 39%;
+    --primary-foreground: 220 20% 10%;
+
+    --secondary: 165 80% 60%;
+    --secondary-foreground: 220 20% 10%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 160 60% 25%;
+    --accent-foreground: 0 0% 95%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 95%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 160 84% 39%;
+
+    --radius: 1.125rem;
+
+    --sidebar-background: 220 20% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 160 84% 39%;
+    --sidebar-primary-foreground: 220 20% 10%;
+    --sidebar-accent: 220 15% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 15% 20%;
+    --sidebar-ring: 160 84% 39%;
+
+    /* Custom tokens */
+    --glow-primary: 160 84% 39%;
+    --glow-secondary: 165 80% 60%;
+    --glass-bg: 220 20% 13% / 0.6;
+    --glass-border: 220 15% 30% / 0.4;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl;
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300 hover:bg-card/80 hover:border-white/[0.15] hover:shadow-[0_8px_32px_rgba(16,185,129,0.1)];
+  }
+
+  .glow-sm {
+    box-shadow: 0 0 20px hsl(160 84% 39% / 0.15);
+  }
+
+  .glow-md {
+    box-shadow: 0 0 40px hsl(160 84% 39% / 0.2);
+  }
+
+  .glow-lg {
+    box-shadow: 0 0 60px hsl(160 84% 39% / 0.25);
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+
+  .gradient-btn {
+    @apply bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold rounded-2xl transition-all duration-300;
+    box-shadow: 0 4px 20px hsl(160 84% 39% / 0.3);
+  }
+
+  .gradient-btn:hover {
+    box-shadow: 0 6px 30px hsl(160 84% 39% / 0.45);
+    transform: translateY(-1px);
+  }
+
+  .skeleton-pulse {
+    @apply animate-pulse bg-muted rounded-xl;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
