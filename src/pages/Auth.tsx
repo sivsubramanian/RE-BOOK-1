@@ -1,80 +1,95 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Book, Mail, Lock, User, ArrowRight, Sparkles } from "lucide-react";
-// Demo auth (localStorage) — Supabase integrations removed
+import { Book, Mail, Lock, User, ArrowRight, Sparkles, Eye, EyeOff, GraduationCap, Building2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+
+/** Departments for signup form */
+const DEPARTMENTS = [
+  "Computer Science", "Electrical Eng.", "Mechanical Eng.",
+  "Business Admin", "Mathematics", "Physics", "Chemistry", "Literature"
+];
+
+/** Password strength checker */
+function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+
+  if (score <= 1) return { score, label: "Weak", color: "bg-red-500" };
+  if (score <= 2) return { score, label: "Fair", color: "bg-yellow-500" };
+  if (score <= 3) return { score, label: "Good", color: "bg-blue-500" };
+  return { score, label: "Strong", color: "bg-green-500" };
+}
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [department, setDepartment] = useState("Computer Science");
+  const [semester, setSemester] = useState(1);
+  const [role, setRole] = useState<"buyer" | "seller">("buyer");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { signIn, signUp, session, isCollegeEmail } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session) {
+      const from = (location.state as any)?.from?.pathname || "/home";
+      navigate(from, { replace: true });
+    }
+  }, [session, navigate, location]);
+
+  const pwStrength = getPasswordStrength(password);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // Demo flow: persist users to localStorage
-    setTimeout(() => {
-      if (isLogin) {
-        const usersRaw = localStorage.getItem("rebook_users") || "{}";
-        try {
-          const users = JSON.parse(usersRaw);
-          const full = users[email]?.fullName || null;
-          localStorage.setItem("rebook_current_user", JSON.stringify({ email, fullName: full }));
-        } catch (e) {
-          localStorage.setItem("rebook_current_user", JSON.stringify({ email, fullName: null }));
-        }
-        toast.success("Welcome back to ReBook!");
-        navigate("/home");
-      } else {
-        const usersRaw = localStorage.getItem("rebook_users") || "{}";
-        let users = {} as any;
-        try { users = JSON.parse(usersRaw); } catch (e) { users = {}; }
-        users[email] = { fullName };
-        localStorage.setItem("rebook_users", JSON.stringify(users));
-        localStorage.setItem("rebook_current_user", JSON.stringify({ email, fullName }));
-        toast.success("Account created successfully!");
-        navigate("/home");
-      }
-      setLoading(false);
-    }, 800);
-
-    /* Original Supabase authentication (commented out for demo)
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Welcome back to ReBook!");
-        navigate("/");
+        const { error } = await signIn(email, password);
+        if (error) {
+          toast.error(error);
+        } else {
+          toast.success("Welcome back to ReBook!");
+          navigate("/home");
+        }
       } else {
-        if (!email.endsWith(".edu") && !email.endsWith(".ac.in") && !email.endsWith(".edu.in")) {
-          toast.error("Please use your college email address (.edu, .ac.in, .edu.in)");
+        // Validate college email
+        if (!isCollegeEmail(email)) {
+          toast.error("Please use your college email (.edu, .ac.in, .edu.in)");
           setLoading(false);
           return;
         }
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
-          },
+
+        const { error } = await signUp(email, password, {
+          full_name: fullName,
+          department,
+          semester,
+          role,
         });
-        if (error) throw error;
-        toast.success("Check your college email to verify your account!");
+        if (error) {
+          toast.error(error);
+        } else {
+          toast.success("Check your college email to verify your account!");
+        }
       }
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
-    */
   };
 
   return (
@@ -98,10 +113,10 @@ const Auth = () => {
             animate={{ scale: 1 }}
             className="inline-flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4"
           >
-            <img src="/bg removed logo.png" alt="ReBook Logo" className="w-12 h-12 sm:w-16 sm:h-16" />
+            <Book className="w-10 h-10 sm:w-12 sm:h-12 text-primary" />
             <span className="font-display text-2xl sm:text-3xl font-bold gradient-text">ReBook</span>
           </motion.div>
-          <p className="text-muted-foreground text-xs sm:text-sm">Reuse. Resell. Relearn.</p>
+          <p className="text-muted-foreground text-xs sm:text-sm">Smart Campus Book Exchange Platform</p>
         </div>
 
         {/* Card */}
@@ -134,18 +149,66 @@ const Auth = () => {
               className="space-y-3.5 sm:space-y-5"
             >
               {!isLogin && (
-                <div className="relative">
-                  <User className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Full Name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="pl-9 sm:pl-11 h-10 sm:h-12 rounded-lg sm:rounded-xl text-xs sm:text-base bg-muted/30 border-border/50 focus:border-primary/50"
-                    required
-                  />
-                </div>
+                <>
+                  {/* Full Name */}
+                  <div className="relative">
+                    <User className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Full Name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="pl-9 sm:pl-11 h-10 sm:h-12 rounded-lg sm:rounded-xl text-xs sm:text-base bg-muted/30 border-border/50 focus:border-primary/50"
+                      required
+                    />
+                  </div>
+
+                  {/* Department */}
+                  <div className="relative">
+                    <Building2 className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                    <select
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      className="w-full pl-9 sm:pl-11 h-10 sm:h-12 rounded-lg sm:rounded-xl text-xs sm:text-base bg-muted/30 border border-border/50 focus:border-primary/50 text-foreground outline-none appearance-none"
+                    >
+                      {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Semester + Role */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                      <select
+                        value={semester}
+                        onChange={(e) => setSemester(Number(e.target.value))}
+                        className="w-full pl-9 sm:pl-11 h-10 sm:h-12 rounded-lg sm:rounded-xl text-xs sm:text-base bg-muted/30 border border-border/50 focus:border-primary/50 text-foreground outline-none appearance-none"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
+                          <option key={s} value={s}>Sem {s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex bg-muted/30 rounded-lg sm:rounded-xl p-1 border border-border/50">
+                      {(["buyer", "seller"] as const).map(r => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setRole(r)}
+                          className={`flex-1 py-2 rounded-md text-xs font-medium capitalize transition-all ${
+                            role === r
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
 
+              {/* Email */}
               <div className="relative">
                 <Mail className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
                 <Input
@@ -158,18 +221,45 @@ const Auth = () => {
                 />
               </div>
 
+              {/* Password */}
               <div className="relative">
                 <Lock className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 sm:pl-11 h-10 sm:h-12 rounded-lg sm:rounded-xl text-xs sm:text-base bg-muted/30 border-border/50 focus:border-primary/50"
-                  minLength={6}
+                  className="pl-9 sm:pl-11 pr-10 h-10 sm:h-12 rounded-lg sm:rounded-xl text-xs sm:text-base bg-muted/30 border-border/50 focus:border-primary/50"
+                  minLength={8}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                </button>
               </div>
+
+              {/* Password strength indicator */}
+              {!isLogin && password && (
+                <div className="space-y-1">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          i <= pwStrength.score ? pwStrength.color : "bg-muted"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Password strength: <span className="font-medium text-foreground">{pwStrength.label}</span>
+                  </p>
+                </div>
+              )}
 
               <Button
                 type="submit"
@@ -193,7 +283,7 @@ const Auth = () => {
 
               {!isLogin && (
                 <p className="text-xs text-muted-foreground text-center">
-                  Only college email addresses are accepted for campus security.
+                  Only college email addresses (.edu, .ac.in, .edu.in) are accepted for campus security.
                 </p>
               )}
             </motion.form>

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 import AIAssistant from "@/components/AIAssistant";
 import Index from "./pages/Index";
@@ -12,6 +13,8 @@ import Search from "./pages/Search";
 import SellerStudio from "./pages/SellerStudio";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
+import Analytics from "./pages/Analytics";
+import Transactions from "./pages/Transactions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,13 +27,19 @@ const AppContent = () => {
     <>
       {!isAuthPage && <Navbar />}
       <Routes>
+        {/* Public */}
         <Route path="/" element={<Auth />} />
-        <Route path="/home" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/book/:id" element={<BookDetail />} />
-        <Route path="/search" element={<Search />} />
-        <Route path="/seller-studio" element={<SellerStudio />} />
-        <Route path="/profile" element={<Profile />} />
+
+        {/* Protected */}
+        <Route path="/home" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+        <Route path="/book/:id" element={<ProtectedRoute><BookDetail /></ProtectedRoute>} />
+        <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+        <Route path="/seller-studio" element={<ProtectedRoute><SellerStudio /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!isAuthPage && <AIAssistant />}

@@ -1,23 +1,36 @@
+/**
+ * Mock Data – Used as fallback when Supabase is unavailable
+ * Types are primarily used from supabase.ts (DbBook, DbTransaction)
+ * This file provides seed data for development and cold-start scenarios
+ */
+
 export interface Book {
   id: string;
   title: string;
   author: string;
+  description: string;
   image: string;
+  image_url: string;
   semester: number;
   department: string;
   condition: "Like New" | "Good" | "Fair";
   price: number;
+  seller_id: string;
   sellerName: string;
   sellerAvatar: string;
   sellerRating: number;
+  status: "available" | "requested" | "sold";
+  views_count: number;
   listedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Transaction {
   id: string;
   bookTitle: string;
   buyerName: string;
-  status: "requested" | "accepted" | "completed";
+  status: "requested" | "accepted" | "rejected" | "cancelled" | "completed";
   date: string;
 }
 
@@ -62,21 +75,47 @@ const authors = [
   "Michael Sipser",
 ];
 
+const descriptions = [
+  "Comprehensive guide to data structures, algorithms, and problem solving techniques.",
+  "Introduction to core ML concepts including supervised and unsupervised learning.",
+  "Covers logic, sets, relations, graph theory and combinatorics.",
+  "Core OS concepts: processes, threads, memory management, file systems.",
+  "Relational model, SQL, normalization, transaction processing.",
+  "Network architectures, protocols, TCP/IP, routing algorithms.",
+  "Signal analysis, Fourier transforms, filtering, sampling theory.",
+  "Vector spaces, eigenvalues, matrix operations, linear transformations.",
+  "Organic reaction mechanisms, stereochemistry, spectroscopy.",
+  "Supply and demand, market equilibrium, consumer theory.",
+  "Statics, dynamics, kinematics, kinetics of particles.",
+  "Search, planning, knowledge representation, machine learning, NLP.",
+  "Limits, derivatives, integrals, multivariable calculus.",
+  "Mechanics, thermodynamics, waves, electromagnetism.",
+  "Software development lifecycle, design patterns, testing.",
+  "Automata, formal languages, computability, complexity theory.",
+];
+
 const names = ["Arjun S.", "Priya M.", "Rahul K.", "Sneha D.", "Vikram T.", "Ananya R.", "Karthik N.", "Divya P."];
 
 export const mockBooks: Book[] = bookTitles.map((title, i) => ({
   id: `book-${i + 1}`,
   title,
   author: authors[i],
+  description: descriptions[i],
   image: `https://picsum.photos/seed/book${i + 1}/400/560`,
+  image_url: `https://picsum.photos/seed/book${i + 1}/400/560`,
   semester: (i % 8) + 1,
   department: departments[i % departments.length],
   condition: conditions[i % 3],
   price: Math.floor(Math.random() * 400) + 100,
+  seller_id: `seller-${(i % names.length) + 1}`,
   sellerName: names[i % names.length],
   sellerAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${names[i % names.length]}`,
   sellerRating: +(3.5 + Math.random() * 1.5).toFixed(1),
+  status: "available" as const,
+  views_count: Math.floor(Math.random() * 50),
   listedAt: `${Math.floor(Math.random() * 7) + 1}d ago`,
+  created_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+  updated_at: new Date().toISOString(),
 }));
 
 export const mockTransactions: Transaction[] = [
