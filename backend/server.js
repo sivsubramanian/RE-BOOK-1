@@ -31,13 +31,21 @@ const PORT = process.env.PORT || 5000;
 // ── Middleware ───────────────────────────────────────────────────
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:8080")
   .split(",")
-  .map((o) => o.trim());
+  .map((o) => o.trim().replace(/\/+$/, "")); // strip trailing slashes
 
 app.use(cors({
   origin(origin, cb) {
     // Allow requests with no origin (curl, mobile apps, health checks)
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error("Not allowed by CORS"));
+    if (!origin) return cb(null, true);
+    // Exact match OR any *.vercel.app preview deploy
+    if (
+      allowedOrigins.includes(origin) ||
+      /^https:\/\/.*\.vercel\.app$/.test(origin)
+    ) {
+      return cb(null, true);
+    }
+    console.warn(`CORS blocked origin: ${origin}`);
+    cb(null, false); // reject without throwing (avoids 500)
   },
   credentials: true,
 }));
