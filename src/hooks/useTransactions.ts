@@ -12,7 +12,7 @@ import {
   hasActiveRequest,
 } from "@/lib/api/transactions";
 import { useAuth } from "@/context/AuthContext";
-import type { DbTransaction } from "@/lib/supabase";
+import type { DbTransaction } from "@/types";
 import { toast } from "sonner";
 
 export function useTransactions(role: "buyer" | "seller" | "all" = "all") {
@@ -30,8 +30,8 @@ export function useTransactions(role: "buyer" | "seller" | "all" = "all") {
     try {
       const data = await fetchUserTransactions(user.id, role);
       setTransactions(data);
-    } catch (err: any) {
-      console.warn("Failed to load transactions:", err.message);
+    } catch (err: unknown) {
+      console.warn("Failed to load transactions:", err instanceof Error ? err.message : err);
       setTransactions([]);
     } finally {
       setLoading(false);

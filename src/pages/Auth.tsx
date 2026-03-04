@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Book, Mail, Lock, User, ArrowRight, Sparkles, Eye, EyeOff, GraduationCap, Building2 } from "lucide-react";
@@ -12,6 +12,9 @@ const DEPARTMENTS = [
   "Computer Science", "Electrical Eng.", "Mechanical Eng.",
   "Business Admin", "Mathematics", "Physics", "Chemistry", "Literature"
 ];
+
+/** Rate-limit cooldown in ms (prevents rapid-fire auth attempts) */
+const AUTH_COOLDOWN_MS = 2000;
 
 /** Password strength checker */
 function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
@@ -38,6 +41,7 @@ const Auth = () => {
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const lastAuthAttempt = useRef<number>(0);
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp, session, isCollegeEmail } = useAuth();
@@ -45,7 +49,7 @@ const Auth = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (session) {
-      const from = (location.state as any)?.from?.pathname || "/home";
+      const from = (location.state as Record<string, { pathname?: string }> | null)?.from?.pathname || "/home";
       navigate(from, { replace: true });
     }
   }, [session, navigate, location]);
@@ -54,6 +58,22 @@ const Auth = () => {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Rate-limit: prevent rapid-fire attempts
+    const now = Date.now();
+    if (now - lastAuthAttempt.current < AUTH_COOLDOWN_MS) {
+      toast.error("Please wait a moment before trying again");
+      return;
+    }
+    lastAuthAttempt.current = now;
+
+    // Basic input sanitization
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -85,8 +105,8 @@ const Auth = () => {
           toast.success("Check your college email to verify your account!");
         }
       }
-    } catch (error: any) {
-      toast.error(error.message || "Authentication failed");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
       setLoading(false);
     }

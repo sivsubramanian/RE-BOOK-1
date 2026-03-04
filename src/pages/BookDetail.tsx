@@ -9,10 +9,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useAllBooks } from "@/hooks/useBooks";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useFavoriteIds } from "@/hooks/useFavorites";
 import { fetchBookById, incrementViews } from "@/lib/api/books";
 import { getRecommendations } from "@/lib/ai/recommendation";
 import BookCard from "@/components/BookCard";
-import type { DbBook, DbUser } from "@/lib/supabase";
+import type { DbBook, DbUser } from "@/types";
 import { toast } from "sonner";
 
 const BookDetail = () => {
@@ -20,6 +21,7 @@ const BookDetail = () => {
   const { user, profile } = useAuth();
   const { books: allBooks } = useAllBooks();
   const { requestBook } = useTransactions();
+  const { favoriteIds, toggle: toggleFav } = useFavoriteIds();
   const [book, setBook] = useState<DbBook | null>(null);
   const [loading, setLoading] = useState(true);
   const [requested, setRequested] = useState(false);
@@ -186,8 +188,11 @@ const BookDetail = () => {
                     Your Listing
                   </div>
                 )}
-                <button className="glass-card p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-muted-foreground hover:text-foreground transition-colors">
-                  <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
+                <button
+                  onClick={() => book && toggleFav(book.id)}
+                  className="glass-card p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl transition-colors"
+                >
+                  <Heart className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${book && favoriteIds.has(book.id) ? "fill-red-500 text-red-500" : "text-muted-foreground hover:text-foreground"}`} />
                 </button>
                 <button className="glass-card p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-muted-foreground hover:text-foreground transition-colors">
                   <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />

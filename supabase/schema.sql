@@ -201,7 +201,107 @@ CREATE OR REPLACE TRIGGER on_transaction_created
   FOR EACH ROW EXECUTE FUNCTION public.update_book_status_on_transaction();
 
 -- ============================================================
--- 5. STORAGE BUCKET FOR BOOK IMAGES
+-- 5. FAVORITES TABLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.favorites (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  book_id UUID NOT NULL REFERENCES public.books(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT unique_user_book_favorite UNIQUE (user_id, book_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON public.favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_book ON public.favorites(book_id);
+
+ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "favorites_select_own" ON public.favorites
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "favorites_insert_own" ON public.favorites
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "favorites_delete_own" ON public.favorites
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- ============================================================
+-- 6. NOTIFICATIONS TABLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  type TEXT NOT NULL DEFAULT 'system' CHECK (type IN ('transaction_update', 'favorite', 'system')),
+  title TEXT NOT NULL,
+  message TEXT NOT NULL DEFAULT '',
+  is_read BOOLEAN NOT NULL DEFAULT false,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON public.notifications(created_at DESC);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "notifications_select_own" ON public.notifications
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "notifications_update_own" ON public.notifications
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "notifications_insert_system" ON public.notifications
+  FOR INSERT WITH CHECK (true); -- Triggers insert via SECURITY DEFINER
+
+-- Trigger: auto-notify on transaction status change
+CREATE OR REPLACE FUNCTION public.notify_on_transaction_change()
+RETURNS TRIGGER AS $$
+DECLARE
+  book_title TEXT;
+  buyer_name TEXT;
+  seller_name TEXT;
+BEGIN
+  SELECT title INTO book_title FROM public.books WHERE id = NEW.book_id;
+  SELECT full_name INTO buyer_name FROM public.profiles WHERE id = NEW.buyer_id;
+  SELECT full_name INTO seller_name FROM public.profiles WHERE id = NEW.seller_id;
+
+  IF NEW.status = 'accepted' AND (OLD IS NULL OR OLD.status != 'accepted') THEN
+    INSERT INTO public.notifications (user_id, type, title, message, metadata)
+    VALUES (NEW.buyer_id, 'transaction_update', 'Request Accepted! 🎉',
+      seller_name || ' accepted your request for "' || book_title || '".',
+      jsonb_build_object('transaction_id', NEW.id, 'book_id', NEW.book_id));
+  ELSIF NEW.status = 'rejected' AND (OLD IS NULL OR OLD.status != 'rejected') THEN
+    INSERT INTO public.notifications (user_id, type, title, message, metadata)
+    VALUES (NEW.buyer_id, 'transaction_update', 'Request Rejected',
+      'Your request for "' || book_title || '" was declined.',
+      jsonb_build_object('transaction_id', NEW.id, 'book_id', NEW.book_id));
+  ELSIF NEW.status = 'completed' AND (OLD IS NULL OR OLD.status != 'completed') THEN
+    INSERT INTO public.notifications (user_id, type, title, message, metadata)
+    VALUES (NEW.buyer_id, 'transaction_update', 'Transaction Complete ✅',
+      'Your exchange for "' || book_title || '" is complete!',
+      jsonb_build_object('transaction_id', NEW.id, 'book_id', NEW.book_id));
+    INSERT INTO public.notifications (user_id, type, title, message, metadata)
+    VALUES (NEW.seller_id, 'transaction_update', 'Sale Complete ✅',
+      '"' || book_title || '" has been exchanged with ' || buyer_name || '.',
+      jsonb_build_object('transaction_id', NEW.id, 'book_id', NEW.book_id));
+  ELSIF NEW.status = 'cancelled' AND (OLD IS NULL OR OLD.status != 'cancelled') THEN
+    INSERT INTO public.notifications (user_id, type, title, message, metadata)
+    VALUES (NEW.seller_id, 'transaction_update', 'Request Cancelled',
+      buyer_name || ' cancelled their request for "' || book_title || '".',
+      jsonb_build_object('transaction_id', NEW.id, 'book_id', NEW.book_id));
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_transaction_notify
+  AFTER INSERT OR UPDATE OF status ON public.transactions
+  FOR EACH ROW EXECUTE FUNCTION public.notify_on_transaction_change();
+
+-- ============================================================
+-- 7. STORAGE BUCKET FOR BOOK IMAGES
 -- ============================================================
 -- Run in Supabase Dashboard > Storage:
 -- Create bucket "book-images" with public access
@@ -215,7 +315,7 @@ CREATE OR REPLACE TRIGGER on_transaction_created
 -- CREATE POLICY "book_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'book-images' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- ============================================================
--- 6. INCREMENT VIEWS FUNCTION
+-- 8. INCREMENT VIEWS FUNCTION
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.increment_book_views(book_id UUID)
 RETURNS void AS $$
@@ -225,8 +325,63 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================
--- 7. ANALYTICS FUNCTIONS
+-- 9. ANALYTICS FUNCTIONS
 -- ============================================================
+
+-- ============================================================
+-- 10. SAFE TRANSACTION REQUEST (race-condition prevention)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.safe_request_book(
+  p_book_id UUID,
+  p_buyer_id UUID,
+  p_seller_id UUID
+)
+RETURNS JSON AS $$
+DECLARE
+  book_status TEXT;
+  existing_tx UUID;
+  new_tx public.transactions%ROWTYPE;
+BEGIN
+  -- Lock the book row to prevent concurrent requests
+  SELECT status INTO book_status
+  FROM public.books WHERE id = p_book_id FOR UPDATE;
+
+  IF book_status IS NULL THEN
+    RETURN json_build_object('error', 'Book not found');
+  END IF;
+
+  IF book_status != 'available' THEN
+    RETURN json_build_object('error', 'This book is no longer available');
+  END IF;
+
+  IF p_buyer_id = p_seller_id THEN
+    RETURN json_build_object('error', 'You cannot request your own book');
+  END IF;
+
+  -- Check for existing active request
+  SELECT id INTO existing_tx
+  FROM public.transactions
+  WHERE book_id = p_book_id AND buyer_id = p_buyer_id
+    AND status IN ('requested', 'accepted');
+
+  IF existing_tx IS NOT NULL THEN
+    RETURN json_build_object('error', 'You already have an active request for this book');
+  END IF;
+
+  -- Update book status
+  UPDATE public.books SET status = 'requested' WHERE id = p_book_id;
+
+  -- Insert transaction
+  INSERT INTO public.transactions (book_id, buyer_id, seller_id, status)
+  VALUES (p_book_id, p_buyer_id, p_seller_id, 'requested')
+  RETURNING * INTO new_tx;
+
+  RETURN json_build_object(
+    'data', json_build_object('id', new_tx.id, 'status', new_tx.status),
+    'error', null
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.get_analytics()
 RETURNS JSON AS $$
 DECLARE

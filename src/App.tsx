@@ -15,6 +15,7 @@ import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import Analytics from "./pages/Analytics";
 import Transactions from "./pages/Transactions";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const AppContent = () => {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><Admin /></ProtectedRoute>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

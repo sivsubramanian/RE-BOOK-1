@@ -146,7 +146,7 @@ const SellerStudio = () => {
         setShowModal(false);
         refetchBooks();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(err.message || "Failed to create listing");
     } finally {
       setSubmitting(false);
@@ -376,7 +376,7 @@ const SellerStudio = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground font-medium mb-1.5 block">Condition</label>
-                    <select value={form.condition} onChange={(e) => setForm(f => ({ ...f, condition: e.target.value as any }))}
+                    <select value={form.condition} onChange={(e) => setForm(f => ({ ...f, condition: e.target.value as DbBook["condition"] }))}
                       className="w-full px-3 py-2 rounded-xl bg-muted/50 border border-border/50 text-sm text-foreground outline-none focus:border-primary/50">
                       {conditions.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>

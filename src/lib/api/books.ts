@@ -1,14 +1,14 @@
 /**
- * Book API Service – All Supabase operations for books
+ * Book API Service – REST API operations for books
  * 
  * Features:
- * - CRUD with RLS protection
- * - Pagination
- * - Filtered search (department, semester, price range)
- * - Image upload with validation
+ * - CRUD operations
+ * - Pagination and filtered search
+ * - Image upload via multer endpoint
  * - View count increment
  */
-import { supabase, type DbBook } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
+import type { DbBook } from "@/types";
 
 /** Allowed image types and max size (5MB) */
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -37,68 +37,28 @@ export interface PaginatedBooks {
 
 /** Fetch books with filters and pagination */
 export async function fetchBooks(filters: BookFilters = {}): Promise<PaginatedBooks> {
-  const page = filters.page || 1;
-  const pageSize = filters.pageSize || 12;
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+  const params = new URLSearchParams();
+  if (filters.department && filters.department !== "All") params.set("department", filters.department);
+  if (filters.semester) params.set("semester", String(filters.semester));
+  if (filters.minPrice !== undefined) params.set("minPrice", String(filters.minPrice));
+  if (filters.maxPrice !== undefined) params.set("maxPrice", String(filters.maxPrice));
+  if (filters.condition && filters.condition !== "All") params.set("condition", filters.condition);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.sellerId) params.set("sellerId", filters.sellerId);
+  if (filters.query) params.set("query", filters.query);
+  params.set("page", String(filters.page || 1));
+  params.set("pageSize", String(filters.pageSize || 12));
 
-  let query = supabase
-    .from("books")
-    .select("*, seller:profiles!seller_id(*)", { count: "exact" });
-
-  // Apply filters
-  if (filters.department && filters.department !== "All") {
-    query = query.eq("department", filters.department);
-  }
-  if (filters.semester) {
-    query = query.eq("semester", filters.semester);
-  }
-  if (filters.minPrice !== undefined) {
-    query = query.gte("price", filters.minPrice);
-  }
-  if (filters.maxPrice !== undefined) {
-    query = query.lte("price", filters.maxPrice);
-  }
-  if (filters.condition && filters.condition !== "All") {
-    query = query.eq("condition", filters.condition);
-  }
-  if (filters.status) {
-    query = query.eq("status", filters.status);
-  }
-  if (filters.sellerId) {
-    query = query.eq("seller_id", filters.sellerId);
-  }
-  if (filters.query) {
-    query = query.or(
-      `title.ilike.%${filters.query}%,author.ilike.%${filters.query}%,description.ilike.%${filters.query}%`
-    );
-  }
-
-  // Pagination and order
-  query = query.order("created_at", { ascending: false }).range(from, to);
-
-  const { data, count, error } = await query;
-  if (error) throw error;
-
-  return {
-    books: (data || []) as DbBook[],
-    total: count || 0,
-    page,
-    pageSize,
-    totalPages: Math.ceil((count || 0) / pageSize),
-  };
+  return apiFetch<PaginatedBooks>(`/books?${params.toString()}`);
 }
 
 /** Fetch a single book by ID */
 export async function fetchBookById(id: string): Promise<DbBook | null> {
-  const { data, error } = await supabase
-    .from("books")
-    .select("*, seller:profiles!seller_id(*)")
-    .eq("id", id)
-    .single();
-
-  if (error) return null;
-  return data as DbBook;
+  try {
+    return await apiFetch<DbBook>(`/books/${id}`);
+  } catch {
+    return null;
+  }
 }
 
 /** Create a new book listing */
@@ -113,42 +73,56 @@ export async function createBook(book: {
   image_url: string;
   seller_id: string;
 }): Promise<{ data: DbBook | null; error: string | null }> {
-  const { data, error } = await supabase
-    .from("books")
-    .insert([{ ...book, status: "available", views_count: 0 }])
-    .select("*, seller:profiles!seller_id(*)")
-    .single();
-
-  return { data: data as DbBook | null, error: error?.message ?? null };
+  try {
+    const data = await apiFetch<DbBook>("/books", {
+      method: "POST",
+      body: JSON.stringify(book),
+    });
+    return { data, error: null };
+  } catch (err: unknown) {
+    return { data: null, error: err instanceof Error ? err.message : "Failed to create book" };
+  }
 }
 
-/** Update a book (only by owner via RLS) */
+/** Update a book (only by owner) */
 export async function updateBook(
   id: string,
   updates: Partial<DbBook>
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase
-    .from("books")
-    .update(updates)
-    .eq("id", id);
-  return { error: error?.message ?? null };
+  try {
+    await apiFetch(`/books/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    });
+    return { error: null };
+  } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : "Failed to update book" };
+  }
 }
 
-/** Delete a book (only by owner via RLS) */
+/** Delete a book (only by owner) */
 export async function deleteBook(id: string): Promise<{ error: string | null }> {
-  const { error } = await supabase.from("books").delete().eq("id", id);
-  return { error: error?.message ?? null };
+  try {
+    await apiFetch(`/books/${id}`, { method: "DELETE" });
+    return { error: null };
+  } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : "Failed to delete book" };
+  }
 }
 
 /** Increment book view count */
 export async function incrementViews(bookId: string): Promise<void> {
-  await supabase.rpc("increment_book_views", { book_id: bookId });
+  try {
+    await apiFetch(`/books/${bookId}/view`, { method: "POST", noAuth: true });
+  } catch {
+    // Fire-and-forget
+  }
 }
 
-/** Validate and upload book image to Supabase Storage */
+/** Validate and upload book image */
 export async function uploadBookImage(
   file: File,
-  userId: string
+  _userId: string
 ): Promise<{ url: string | null; error: string | null }> {
   // Validate file type
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
@@ -159,21 +133,17 @@ export async function uploadBookImage(
     return { url: null, error: "Image must be less than 5MB" };
   }
 
-  const ext = file.name.split(".").pop() || "jpg";
-  const fileName = `${userId}/${Date.now()}.${ext}`;
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
 
-  const { error } = await supabase.storage
-    .from("book-images")
-    .upload(fileName, file, {
-      cacheControl: "3600",
-      upsert: false,
+    const data = await apiFetch<{ url: string }>("/upload/image", {
+      method: "POST",
+      body: formData,
     });
 
-  if (error) return { url: null, error: error.message };
-
-  const { data: urlData } = supabase.storage
-    .from("book-images")
-    .getPublicUrl(fileName);
-
-  return { url: urlData.publicUrl, error: null };
+    return { url: data.url, error: null };
+  } catch (err: unknown) {
+    return { url: null, error: err instanceof Error ? err.message : "Upload failed" };
+  }
 }

@@ -3,9 +3,11 @@
  */
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Search, User, Store, Home, LogOut, BarChart3, ArrowLeftRight } from "lucide-react";
+import { Search, User, Store, Home, LogOut, BarChart3, ArrowLeftRight, Loader2, Bell, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const navItems = [
@@ -18,9 +20,13 @@ const navItems = [
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, signOut, displayName } = useAuth();
+  const { user, profile, signOut, displayName, loggingOut } = useAuth();
+  const queryClient = useQueryClient();
+  const { notifications, unreadCount, readOne, readAll } = useNotifications();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const nameToShow = displayName || profile?.full_name || "User";
   const avatarSeed = nameToShow;
@@ -31,6 +37,9 @@ const Navbar = () => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -39,8 +48,9 @@ const Navbar = () => {
   const handleLogout = async () => {
     setDropdownOpen(false);
     await signOut();
-    toast.success("Logged out");
-    navigate("/auth");
+    queryClient.clear(); // Wipe all cached data
+    toast.success("Logged out successfully");
+    navigate("/auth", { replace: true });
   };
 
   return (
@@ -83,6 +93,69 @@ const Navbar = () => {
               </Link>
             );
           })}
+
+          {/* Notification bell */}
+          {user && (
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => { setNotifOpen(!notifOpen); setDropdownOpen(false); }}
+                className="relative p-1.5 sm:p-2 rounded-lg hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {notifOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-2 w-72 sm:w-80 glass-card rounded-xl border border-border/50 shadow-xl overflow-hidden"
+                  >
+                    <div className="px-4 py-2.5 border-b border-border/50 flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground">Notifications</p>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={() => { readAll(); }}
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <Check className="w-3 h-3" /> Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                          No notifications yet
+                        </div>
+                      ) : (
+                        notifications.slice(0, 10).map((n) => (
+                          <button
+                            key={n.id}
+                            onClick={() => { readOne(n.id); if (n.metadata?.book_id) { setNotifOpen(false); navigate(`/book/${n.metadata.book_id}`); } }}
+                            className={`w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0 ${
+                              !n.is_read ? "bg-primary/5" : ""
+                            }`}
+                          >
+                            <p className="text-xs sm:text-sm font-medium text-foreground">{n.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {new Date(n.created_at).toLocaleDateString()} · {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {/* Profile dropdown */}
           <div className="relative ml-1 sm:ml-2" ref={dropdownRef}>
@@ -153,9 +226,11 @@ const Navbar = () => {
                       <div className="border-t border-border/50 py-1">
                         <button
                           onClick={handleLogout}
-                          className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                          disabled={loggingOut}
+                          className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 disabled:opacity-50"
                         >
-                          <LogOut className="w-4 h-4" /> Log out
+                          {loggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                          {loggingOut ? "Logging out…" : "Log out"}
                         </button>
                       </div>
                     </>

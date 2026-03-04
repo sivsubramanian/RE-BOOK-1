@@ -10,7 +10,7 @@ import FilterChips from "@/components/FilterChips";
 import { useAuth } from "@/context/AuthContext";
 import { useAllBooks } from "@/hooks/useBooks";
 import { getPersonalizedRecommendations, getColdStartRecommendations } from "@/lib/ai/recommendation";
-import type { DbUser } from "@/lib/supabase";
+import type { DbUser } from "@/types";
 
 const Index = () => {
   const { profile, displayName } = useAuth();

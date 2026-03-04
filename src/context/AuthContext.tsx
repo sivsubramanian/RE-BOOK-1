@@ -1,25 +1,31 @@
 /**
- * AuthContext – Production-ready Supabase Auth with role-based access control
+ * AuthContext – JWT-based authentication with role-based access control
  * 
  * Features:
- * - Real Supabase Auth (email/password) with session persistence
- * - Auto-refresh tokens
+ * - JWT token stored in localStorage
  * - College-domain email restriction on signup
  * - Role-based access: buyer / seller / admin
- * - Profile data from profiles table
+ * - Profile data from Express backend
  */
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { supabase, type DbUser } from "@/lib/supabase";
-import type { Session, User } from "@supabase/supabase-js";
+import { apiFetch, getToken, setToken, clearToken } from "@/lib/api";
+import type { DbUser } from "@/types";
 
 /** Allowed college email domains for signup */
 const ALLOWED_DOMAINS = [".edu", ".ac.in", ".edu.in"];
 
+/** Minimal user type for auth context (replaces Supabase User) */
+interface AuthUser {
+  id: string;
+  email: string;
+}
+
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
+  session: string | null;  // JWT token (non-null when logged in)
+  user: AuthUser | null;
   profile: DbUser | null;
   loading: boolean;
+  loggingOut: boolean;
   signUp: (email: string, password: string, metadata: {
     full_name: string;
     department: string;
@@ -38,6 +44,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  loggingOut: false,
   signUp: async () => ({ error: null }),
   signIn: async () => ({ error: null }),
   signOut: async () => {},
@@ -49,47 +56,36 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<DbUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  /** Fetch user profile from profiles table */
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
-    if (!error && data) {
-      setProfile(data as DbUser);
+  /** Fetch user profile from backend */
+  const fetchProfile = useCallback(async () => {
+    try {
+      const data = await apiFetch<DbUser>("/auth/me");
+      setProfile(data);
+      setUser({ id: data.id, email: data.email });
+    } catch {
+      // Token invalid/expired — clear auth state
+      clearToken();
+      setSession(null);
+      setUser(null);
+      setProfile(null);
     }
   }, []);
 
-  /** Initialize session and listen for auth changes */
+  /** Initialize from stored JWT token */
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
+    const token = getToken();
+    if (token) {
+      setSession(token);
+      fetchProfile().finally(() => setLoading(false));
+    } else {
       setLoading(false);
-    });
-
-    // Listen for auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    }
   }, [fetchProfile]);
 
   /** Validate college email domain */
@@ -103,60 +99,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     password: string,
     metadata: { full_name: string; department: string; semester: number; role: 'buyer' | 'seller' }
   ): Promise<{ error: string | null }> => {
-    // Validate college domain
-    if (!isCollegeEmail(email)) {
-      return { error: "Please use your college email address (.edu, .ac.in, .edu.in)" };
+    try {
+      const data = await apiFetch<{ token: string; user: DbUser }>("/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({ email, password, ...metadata }),
+        noAuth: true,
+      });
+      setToken(data.token);
+      setSession(data.token);
+      setProfile(data.user);
+      setUser({ id: data.user.id, email: data.user.email });
+      return { error: null };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : "Signup failed" };
     }
-    // Password strength check
-    if (password.length < 8) return { error: "Password must be at least 8 characters" };
-    if (!/[A-Z]/.test(password)) return { error: "Password must contain an uppercase letter" };
-    if (!/[0-9]/.test(password)) return { error: "Password must contain a number" };
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: metadata,
-        emailRedirectTo: `${window.location.origin}/home`,
-      },
-    });
-    return { error: error?.message ?? null };
   };
 
   /** Sign in with email + password */
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    try {
+      const data = await apiFetch<{ token: string; user: DbUser }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+        noAuth: true,
+      });
+      setToken(data.token);
+      setSession(data.token);
+      setProfile(data.user);
+      setUser({ id: data.user.id, email: data.user.email });
+      return { error: null };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : "Login failed" };
+    }
   };
 
-  /** Sign out */
+  /** Sign out – clears all auth state */
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-    setProfile(null);
+    setLoggingOut(true);
+    try {
+      clearToken();
+    } finally {
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setLoggingOut(false);
+    }
   };
 
   /** Update profile fields */
   const updateProfile = async (data: Partial<DbUser>): Promise<{ error: string | null }> => {
-    if (!session?.user) return { error: "Not authenticated" };
-    const { error } = await supabase
-      .from("profiles")
-      .update(data)
-      .eq("id", session.user.id);
-    if (!error) {
-      setProfile(prev => prev ? { ...prev, ...data } : null);
+    if (!session) return { error: "Not authenticated" };
+    try {
+      const updated = await apiFetch<DbUser>("/auth/profile", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+      setProfile(updated);
+      return { error: null };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : "Update failed" };
     }
-    return { error: error?.message ?? null };
   };
 
-  const displayName = profile?.full_name || session?.user?.user_metadata?.full_name || null;
+  const displayName = profile?.full_name || null;
 
   return (
     <AuthContext.Provider value={{
       session,
-      user: session?.user ?? null,
+      user,
       profile,
       loading,
+      loggingOut,
       signUp,
       signIn,
       signOut,

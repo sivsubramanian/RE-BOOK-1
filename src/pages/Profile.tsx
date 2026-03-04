@@ -6,14 +6,16 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Star, Leaf, BookOpen, ArrowRight, LogOut, Edit3, Save, X, Loader2,
+  Star, Leaf, BookOpen, ArrowRight, LogOut, Edit3, Save, X, Loader2, Heart,
 } from "lucide-react";
 import { useBooks } from "@/hooks/useBooks";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useFavorites } from "@/hooks/useFavorites";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-const tabs = ["Active Requests", "My Listings", "Completed"];
+const tabs = ["Active Requests", "My Listings", "Favorites", "Completed"];
 
 const statusBadge: Record<string, string> = {
   requested: "bg-yellow-500/20 text-yellow-400",
@@ -30,11 +32,13 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
-  const { user, profile, signOut, updateProfile, displayName } = useAuth();
+  const { user, profile, signOut, updateProfile, displayName, loggingOut } = useAuth();
+  const queryClient = useQueryClient();
   const { transactions, loading: txLoading } = useTransactions("all");
   const { books, loading: booksLoading } = useBooks(
     user?.id ? { sellerId: user.id, pageSize: 50 } : { pageSize: 0 }
   );
+  const { favorites, loading: favsLoading } = useFavorites();
 
   const nameToShow = displayName || profile?.full_name || "Your Name";
   const avatarSeed = nameToShow;
@@ -61,8 +65,9 @@ const Profile = () => {
 
   const handleLogout = async () => {
     await signOut();
+    queryClient.clear();
     toast.success("Logged out successfully!");
-    navigate("/auth");
+    navigate("/auth", { replace: true });
   };
 
   const handleSaveName = async () => {
@@ -171,11 +176,12 @@ const Profile = () => {
           {/* Logout Button */}
           <Button
             onClick={handleLogout}
+            disabled={loggingOut}
             variant="outline"
-            className="mt-4 sm:mt-6 w-full sm:w-auto border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-500 text-xs sm:text-sm"
+            className="mt-4 sm:mt-6 w-full sm:w-auto border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-500 text-xs sm:text-sm disabled:opacity-50"
           >
-            <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
-            Log Out
+            {loggingOut ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2 animate-spin" /> : <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />}
+            {loggingOut ? "Logging out…" : "Log Out"}
           </Button>
         </motion.div>
 
@@ -197,14 +203,14 @@ const Profile = () => {
         </div>
 
         {/* Loading */}
-        {(txLoading || booksLoading) && (
+        {(txLoading || booksLoading || favsLoading) && (
           <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         )}
 
         {/* Tab content */}
-        {!txLoading && !booksLoading && (
+        {!txLoading && !booksLoading && !favsLoading && (
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 8 }}
@@ -280,8 +286,44 @@ const Profile = () => {
               </>
             )}
 
-            {/* Completed */}
+            {/* Favorites */}
             {activeTab === 2 && (
+              <>
+                {favorites.length === 0 && (
+                  <div className="glass-card p-6 rounded-2xl text-center">
+                    <Heart className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground text-sm">No favorites yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">Tap the heart on any book to save it here</p>
+                  </div>
+                )}
+                {favorites.map((fav) => (
+                  <div
+                    key={fav.id}
+                    onClick={() => navigate(`/book/${fav.book_id}`)}
+                    className="glass-card-hover p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4 cursor-pointer"
+                  >
+                    <img
+                      src={fav.book?.image_url || `https://picsum.photos/seed/${fav.book_id}/400/560`}
+                      alt={fav.book?.title || "Book"}
+                      className="w-10 h-14 sm:w-12 sm:h-16 rounded-lg sm:rounded-xl object-cover flex-shrink-0"
+                      loading="lazy"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm font-medium text-foreground truncate">
+                        {fav.book?.title || "Book"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        ₹{fav.book?.price} · {fav.book?.condition}
+                      </p>
+                    </div>
+                    <Heart className="w-4 h-4 fill-red-500 text-red-500 flex-shrink-0" />
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Completed */}
+            {activeTab === 3 && (
               <>
                 {completedTx.length === 0 && (
                   <div className="glass-card p-6 rounded-2xl text-center">

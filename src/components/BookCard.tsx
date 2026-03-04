@@ -1,10 +1,10 @@
 /**
- * BookCard – Universal book display card supporting both DbBook and legacy Book types
+ * BookCard – Universal book display card with favorite toggle
  */
 import { motion } from "framer-motion";
-import { Star, ArrowRight } from "lucide-react";
+import { Star, ArrowRight, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { DbBook } from "@/lib/supabase";
+import type { DbBook } from "@/types";
 
 const conditionColors: Record<string, string> = {
   "Like New": "bg-primary/20 text-primary",
@@ -19,11 +19,13 @@ const statusBadge: Record<string, string> = {
 };
 
 interface BookCardProps {
-  book: DbBook | any; // Accept both types
+  book: DbBook | Record<string, unknown>;
   index?: number;
+  isFavorited?: boolean;
+  onToggleFavorite?: (bookId: string) => void;
 }
 
-const BookCard = ({ book, index = 0 }: BookCardProps) => {
+const BookCard = ({ book, index = 0, isFavorited = false, onToggleFavorite }: BookCardProps) => {
   const imageUrl = book.image_url || book.image || `https://picsum.photos/seed/${book.id}/400/560`;
   const sellerName = book.seller?.full_name || book.sellerName || "Seller";
   const sellerRating = book.sellerRating || 4.5;
@@ -61,6 +63,16 @@ const BookCard = ({ book, index = 0 }: BookCardProps) => {
                 {status}
               </span>
             </div>
+          )}
+          {/* Favorite button */}
+          {onToggleFavorite && (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite(book.id as string); }}
+              className="absolute top-3 right-3 p-1.5 rounded-full bg-background/60 backdrop-blur-sm hover:bg-background/80 transition-colors z-10"
+              aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Heart className={`w-4 h-4 transition-colors ${isFavorited ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+            </button>
           )}
           <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="gradient-btn p-2.5 rounded-full">

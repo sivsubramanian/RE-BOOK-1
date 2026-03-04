@@ -1,11 +1,11 @@
 /**
- * useBooks – React hook for fetching and managing books with Supabase
- * Falls back to mock data when Supabase is not configured
+ * useBooks – React hook for fetching and managing books
+ * Falls back to mock data when backend API is unavailable
  */
 import { useState, useEffect, useCallback } from "react";
 import { fetchBooks, type BookFilters, type PaginatedBooks } from "@/lib/api/books";
 import { mockBooks } from "@/lib/mockData";
-import type { DbBook } from "@/lib/supabase";
+import type { DbBook } from "@/types";
 
 /** Convert mock book to DbBook shape */
 function mockToDbBook(mock: typeof mockBooks[0]): DbBook {
@@ -54,9 +54,9 @@ export function useBooks(filters: BookFilters = {}) {
     try {
       const result = await fetchBooks(filters);
       setData(result);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Fallback to mock data
-      console.warn("Supabase fetch failed, using mock data:", err.message);
+      console.warn("API fetch failed, using mock data:", err instanceof Error ? err.message : err);
       let filtered = mockBooks.map(mockToDbBook);
 
       if (filters.department && filters.department !== "All") {
