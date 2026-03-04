@@ -11,6 +11,7 @@ import {
 import { useBooks } from "@/hooks/useBooks";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useUserReviews } from "@/hooks/useReviews";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -39,6 +40,7 @@ const Profile = () => {
     user?.id ? { sellerId: user.id, pageSize: 50 } : { pageSize: 0 }
   );
   const { favorites, loading: favsLoading } = useFavorites();
+  const { stats: ratingStats, reviews: userReviews, loading: reviewsLoading } = useUserReviews(user?.id);
 
   const nameToShow = displayName || profile?.full_name || "Your Name";
   const avatarSeed = nameToShow;
@@ -47,11 +49,12 @@ const Profile = () => {
   const stats = useMemo(() => {
     const completedCount = transactions.filter((t) => t.status === "completed").length;
     return {
-      rating: completedCount > 0 ? Math.min(5, 4 + completedCount * 0.1).toFixed(1) : "–",
+      rating: ratingStats.review_count > 0 ? ratingStats.average_rating.toFixed(1) : "–",
+      reviewCount: ratingStats.review_count,
       reused: completedCount,
       listed: books.length,
     };
-  }, [transactions, books]);
+  }, [transactions, books, ratingStats]);
 
   // Tab content
   const activeRequests = useMemo(
@@ -149,7 +152,7 @@ const Profile = () => {
                   {stats.rating}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">Rating</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Rating ({stats.reviewCount})</p>
             </div>
             <div className="w-px h-8 bg-border" />
             <div className="text-center">
@@ -203,14 +206,14 @@ const Profile = () => {
         </div>
 
         {/* Loading */}
-        {(txLoading || booksLoading || favsLoading) && (
+        {(txLoading || booksLoading || favsLoading || reviewsLoading) && (
           <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         )}
 
         {/* Tab content */}
-        {!txLoading && !booksLoading && !favsLoading && (
+        {!txLoading && !booksLoading && !favsLoading && !reviewsLoading && (
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 8 }}

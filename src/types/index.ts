@@ -40,11 +40,39 @@ export interface DbTransaction {
   buyer_id: string;
   seller_id: string;
   status: 'requested' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
+  order_status: 'book_given' | 'received' | null;
   created_at: string;
   updated_at: string;
   book?: DbBook;
   buyer?: DbUser;
   seller?: DbUser;
+}
+
+export interface DbReview {
+  id: string;
+  transaction_id: string;
+  reviewer_id: string;
+  target_id: string;
+  book_id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  reviewer?: Pick<DbUser, 'id' | 'email' | 'full_name' | 'avatar_url'>;
+  book?: Pick<DbBook, 'id' | 'title' | 'author' | 'image_url'>;
+}
+
+export interface DbMessage {
+  id: string;
+  transaction_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  sender?: Pick<DbUser, 'id' | 'full_name' | 'avatar_url'>;
+}
+
+export interface RatingStats {
+  review_count: number;
+  average_rating: number;
 }
 
 export interface DbFavorite {

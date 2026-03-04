@@ -249,6 +249,61 @@ router.put("/:id/complete", requireAuth, async (req, res) => {
   }
 });
 
+/** PUT /api/transactions/:id/book-given – Seller confirms book handed over */
+router.put("/:id/book-given", requireAuth, async (req, res) => {
+  try {
+    const tx = await query("SELECT * FROM transactions WHERE id = $1", [req.params.id]);
+    if (tx.rows.length === 0) return res.status(404).json({ error: "Transaction not found" });
+    if (tx.rows[0].seller_id !== req.user.id) return res.status(403).json({ error: "Not authorized" });
+    if (tx.rows[0].status !== "accepted") return res.status(400).json({ error: "Can only give book for accepted transactions" });
+
+    await query(
+      "UPDATE transactions SET order_status = 'book_given', updated_at = NOW() WHERE id = $1",
+      [req.params.id]
+    );
+
+    // Notify buyer
+    await query(
+      `INSERT INTO notifications (user_id, type, title, message, metadata)
+       VALUES ($1, 'transaction_update', 'Book Given', 'The seller has handed over the book. Please confirm receipt.', $2)`,
+      [tx.rows[0].buyer_id, JSON.stringify({ transaction_id: req.params.id })]
+    );
+
+    res.json({ message: "Book marked as given" });
+  } catch (err) {
+    console.error("Book-given error:", err);
+    res.status(500).json({ error: "Failed to update transaction" });
+  }
+});
+
+/** PUT /api/transactions/:id/received – Buyer confirms book received → auto-completes */
+router.put("/:id/received", requireAuth, async (req, res) => {
+  try {
+    const tx = await query("SELECT * FROM transactions WHERE id = $1", [req.params.id]);
+    if (tx.rows.length === 0) return res.status(404).json({ error: "Transaction not found" });
+    if (tx.rows[0].buyer_id !== req.user.id) return res.status(403).json({ error: "Not authorized" });
+    if (tx.rows[0].order_status !== "book_given") return res.status(400).json({ error: "Book must be marked as given first" });
+
+    await query(
+      "UPDATE transactions SET order_status = 'received', status = 'completed', updated_at = NOW() WHERE id = $1",
+      [req.params.id]
+    );
+    await query("UPDATE books SET status = 'sold' WHERE id = $1", [tx.rows[0].book_id]);
+
+    // Notify seller
+    await query(
+      `INSERT INTO notifications (user_id, type, title, message, metadata)
+       VALUES ($1, 'transaction_update', 'Book Received!', 'The buyer confirmed receipt. Exchange complete!', $2)`,
+      [tx.rows[0].seller_id, JSON.stringify({ transaction_id: req.params.id })]
+    );
+
+    res.json({ message: "Book received, transaction completed" });
+  } catch (err) {
+    console.error("Received error:", err);
+    res.status(500).json({ error: "Failed to update transaction" });
+  }
+});
+
 /** GET /api/transactions/active/:bookId – Check for active request */
 router.get("/active/:bookId", requireAuth, async (req, res) => {
   try {

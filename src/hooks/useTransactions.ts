@@ -9,6 +9,8 @@ import {
   rejectTransaction,
   cancelTransaction,
   completeTransaction,
+  bookGivenTransaction,
+  receivedTransaction,
   hasActiveRequest,
 } from "@/lib/api/transactions";
 import { useAuth } from "@/context/AuthContext";
@@ -107,6 +109,28 @@ export function useTransactions(role: "buyer" | "seller" | "all" = "all") {
     await load();
   };
 
+  /** Mark book as given (seller) */
+  const bookGiven = async (txId: string) => {
+    const { error } = await bookGivenTransaction(txId);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Book marked as given!");
+    await load();
+  };
+
+  /** Confirm book received (buyer → auto-completes) */
+  const markReceived = async (txId: string) => {
+    const { error } = await receivedTransaction(txId);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Book received! Transaction complete.");
+    await load();
+  };
+
   /** Check if current user has active request for a book */
   const checkActiveRequest = async (bookId: string): Promise<boolean> => {
     if (!user?.id) return false;
@@ -122,6 +146,8 @@ export function useTransactions(role: "buyer" | "seller" | "all" = "all") {
     reject,
     cancel,
     complete,
+    bookGiven,
+    markReceived,
     checkActiveRequest,
   };
 }

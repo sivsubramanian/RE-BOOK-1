@@ -75,6 +75,30 @@ export async function completeTransaction(
   }
 }
 
+/** Seller marks book as given */
+export async function bookGivenTransaction(
+  txId: string
+): Promise<{ error: string | null }> {
+  try {
+    await apiFetch(`/transactions/${txId}/book-given`, { method: "PUT" });
+    return { error: null };
+  } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : "Failed to mark book as given" };
+  }
+}
+
+/** Buyer confirms book received (auto-completes) */
+export async function receivedTransaction(
+  txId: string
+): Promise<{ error: string | null }> {
+  try {
+    await apiFetch(`/transactions/${txId}/received`, { method: "PUT" });
+    return { error: null };
+  } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : "Failed to confirm receipt" };
+  }
+}
+
 /** Fetch transactions for a user (as buyer or seller) */
 export async function fetchUserTransactions(
   _userId: string,

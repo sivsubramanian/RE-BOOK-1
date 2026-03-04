@@ -15,6 +15,8 @@ import { getRecommendations } from "@/lib/ai/recommendation";
 import BookCard from "@/components/BookCard";
 import type { DbBook, DbUser } from "@/types";
 import { toast } from "sonner";
+import { fetchRatingStats } from "@/lib/api/reviews";
+import type { RatingStats } from "@/types";
 
 const BookDetail = () => {
   const { id } = useParams();
@@ -27,6 +29,7 @@ const BookDetail = () => {
   const [requested, setRequested] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [similar, setSimilar] = useState<DbBook[]>([]);
+  const [sellerStats, setSellerStats] = useState<RatingStats>({ review_count: 0, average_rating: 0 });
 
   useEffect(() => {
     if (!id) return;
@@ -61,6 +64,14 @@ const BookDetail = () => {
     );
     setSimilar(recs.map(r => r.book));
   }, [book, allBooks, profile]);
+
+  // Fetch seller rating stats
+  useEffect(() => {
+    if (!book?.seller_id) return;
+    fetchRatingStats(book.seller_id)
+      .then(setSellerStats)
+      .catch(() => {});
+  }, [book?.seller_id]);
 
   const handleRequest = async () => {
     if (!book || !user) {
@@ -162,7 +173,11 @@ const BookDetail = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-foreground truncate">{sellerName}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Star className="w-3 h-3 fill-primary text-primary flex-shrink-0" /> 4.8
+                    <Star className="w-3 h-3 fill-primary text-primary flex-shrink-0" />
+                    {sellerStats.review_count > 0 ? sellerStats.average_rating.toFixed(1) : "New"}
+                    {sellerStats.review_count > 0 && (
+                      <span className="opacity-60">({sellerStats.review_count})</span>
+                    )}
                     <ShieldCheck className="w-3 h-3 text-primary ml-1 flex-shrink-0" /> <span className="hidden sm:inline">Verified</span>
                   </div>
                 </div>
