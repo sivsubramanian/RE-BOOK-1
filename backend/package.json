@@ -4,10 +4,14 @@
   "description": "RE-BOOK-1 Backend – Node.js + Express + PostgreSQL",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "migrate": "node migrate.js"
+    "migrate": "node migrate.js",
+    "build": "npm install && node migrate.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

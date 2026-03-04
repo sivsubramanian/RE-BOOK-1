@@ -29,8 +29,16 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ── Middleware ───────────────────────────────────────────────────
+const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:8080")
+  .split(",")
+  .map((o) => o.trim());
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:8080",
+  origin(origin, cb) {
+    // Allow requests with no origin (curl, mobile apps, health checks)
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error("Not allowed by CORS"));
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: "10mb" }));
