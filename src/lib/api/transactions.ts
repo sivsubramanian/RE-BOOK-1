@@ -92,7 +92,7 @@ export async function receivedTransaction(
   txId: string
 ): Promise<{ error: string | null }> {
   try {
-    await apiFetch(`/transactions/${txId}/received`, { method: "PUT" });
+    await apiFetch(`/orders/${txId}/received`, { method: "PATCH" });
     return { error: null };
   } catch (err: unknown) {
     return { error: err instanceof Error ? err.message : "Failed to confirm receipt" };

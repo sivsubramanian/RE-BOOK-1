@@ -20,6 +20,7 @@ import {
   generateResponse,
   detectIntent,
 } from "@/lib/ai/recommendation";
+import { fetchChatbotSuggestions } from "@/lib/api/chatbot";
 import { useNavigate } from "react-router-dom";
 
 interface ChatMessage {
@@ -63,17 +64,22 @@ const AIAssistant = () => {
       setThinking(true);
 
       // Simulate a tiny delay for UX (feels more "AI-like")
-      setTimeout(() => {
+      setTimeout(async () => {
         const { intent, entities } = detectIntent(query);
 
         let results;
-        if (intent === "recommendation" && profile) {
-          // Use personalized recommendations
-          results = getRecommendations(query, allBooks, profile, 6);
-        } else if (allBooks.length > 0) {
-          results = getRecommendations(query, allBooks, profile, 6);
-        } else {
-          results = [];
+        try {
+          const bot = await fetchChatbotSuggestions(query);
+          results = (bot.books || []).map((book) => ({ book, score: Number(book.score || 0) }));
+        } catch {
+          if (intent === "recommendation" && profile) {
+            // Use personalized recommendations
+            results = getRecommendations(query, allBooks, profile, 6);
+          } else if (allBooks.length > 0) {
+            results = getRecommendations(query, allBooks, profile, 6);
+          } else {
+            results = [];
+          }
         }
 
         // Handle cold-start: if no results and intent isn't greeting/help

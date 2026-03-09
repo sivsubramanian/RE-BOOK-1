@@ -76,6 +76,7 @@ router.get("/", optionalAuth, async (req, res) => {
     values.push(ps, offset);
     const dataResult = await query(
       `SELECT b.*, 
+              rv.average_rating,
               json_build_object(
                 'id', u.id, 'email', u.email, 'full_name', u.full_name,
                 'department', u.department, 'semester', u.semester,
@@ -83,6 +84,11 @@ router.get("/", optionalAuth, async (req, res) => {
               ) as seller
        FROM books b
        LEFT JOIN users u ON b.seller_id = u.id
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(AVG(r.rating), 0)::float as average_rating
+         FROM reviews r
+         WHERE r.book_id = b.id
+       ) rv ON true
        ${whereClause}
        ORDER BY b.created_at DESC
        LIMIT $${idx++} OFFSET $${idx++}`,
@@ -107,6 +113,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
   try {
     const result = await query(
       `SELECT b.*, 
+              rv.average_rating,
               json_build_object(
                 'id', u.id, 'email', u.email, 'full_name', u.full_name,
                 'department', u.department, 'semester', u.semester,
@@ -114,6 +121,11 @@ router.get("/:id", optionalAuth, async (req, res) => {
               ) as seller
        FROM books b
        LEFT JOIN users u ON b.seller_id = u.id
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(AVG(r.rating), 0)::float as average_rating
+         FROM reviews r
+         WHERE r.book_id = b.id
+       ) rv ON true
        WHERE b.id = $1`,
       [req.params.id]
     );
@@ -147,12 +159,20 @@ router.post("/", requireAuth, async (req, res) => {
     // Fetch with seller info
     const bookWithSeller = await query(
       `SELECT b.*, 
+              rv.average_rating,
               json_build_object(
                 'id', u.id, 'email', u.email, 'full_name', u.full_name,
                 'department', u.department, 'semester', u.semester,
                 'role', u.role, 'avatar_url', u.avatar_url, 'created_at', u.created_at
               ) as seller
-       FROM books b LEFT JOIN users u ON b.seller_id = u.id WHERE b.id = $1`,
+       FROM books b
+       LEFT JOIN users u ON b.seller_id = u.id
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(AVG(r.rating), 0)::float as average_rating
+         FROM reviews r
+         WHERE r.book_id = b.id
+       ) rv ON true
+       WHERE b.id = $1`,
       [result.rows[0].id]
     );
 

@@ -84,8 +84,8 @@ router.post("/", requireAuth, async (req, res) => {
 
     // Create transaction
     const txResult = await client.query(
-      `INSERT INTO transactions (book_id, buyer_id, seller_id, status)
-       VALUES ($1, $2, $3, 'requested') RETURNING id`,
+      `INSERT INTO transactions (book_id, buyer_id, seller_id, status, order_status)
+       VALUES ($1, $2, $3, 'requested', 'pending') RETURNING id`,
       [book_id, buyerId, seller_id]
     );
 
@@ -166,7 +166,7 @@ router.put("/:id/accept", requireAuth, async (req, res) => {
     if (tx.rows[0].seller_id !== req.user.id) return res.status(403).json({ error: "Not authorized" });
     if (tx.rows[0].status !== "requested") return res.status(400).json({ error: "Can only accept requested transactions" });
 
-    await query("UPDATE transactions SET status = 'accepted' WHERE id = $1", [req.params.id]);
+    await query("UPDATE transactions SET status = 'accepted', order_status = 'pending' WHERE id = $1", [req.params.id]);
 
     // Notify buyer
     await query(
@@ -232,7 +232,7 @@ router.put("/:id/complete", requireAuth, async (req, res) => {
     if (tx.rows[0].seller_id !== req.user.id) return res.status(403).json({ error: "Not authorized" });
     if (tx.rows[0].status !== "accepted") return res.status(400).json({ error: "Can only complete accepted transactions" });
 
-    await query("UPDATE transactions SET status = 'completed' WHERE id = $1", [req.params.id]);
+    await query("UPDATE transactions SET status = 'completed', order_status = 'completed' WHERE id = $1", [req.params.id]);
     await query("UPDATE books SET status = 'sold' WHERE id = $1", [tx.rows[0].book_id]);
 
     // Notify buyer
@@ -258,7 +258,7 @@ router.put("/:id/book-given", requireAuth, async (req, res) => {
     if (tx.rows[0].status !== "accepted") return res.status(400).json({ error: "Can only give book for accepted transactions" });
 
     await query(
-      "UPDATE transactions SET order_status = 'book_given', updated_at = NOW() WHERE id = $1",
+      "UPDATE transactions SET order_status = 'shipped', updated_at = NOW() WHERE id = $1",
       [req.params.id]
     );
 
@@ -282,10 +282,10 @@ router.put("/:id/received", requireAuth, async (req, res) => {
     const tx = await query("SELECT * FROM transactions WHERE id = $1", [req.params.id]);
     if (tx.rows.length === 0) return res.status(404).json({ error: "Transaction not found" });
     if (tx.rows[0].buyer_id !== req.user.id) return res.status(403).json({ error: "Not authorized" });
-    if (tx.rows[0].order_status !== "book_given") return res.status(400).json({ error: "Book must be marked as given first" });
+    if (tx.rows[0].order_status !== "shipped") return res.status(400).json({ error: "Book must be marked as given first" });
 
     await query(
-      "UPDATE transactions SET order_status = 'received', status = 'completed', updated_at = NOW() WHERE id = $1",
+      "UPDATE transactions SET order_status = 'delivered', status = 'completed', updated_at = NOW() WHERE id = $1",
       [req.params.id]
     );
     await query("UPDATE books SET status = 'sold' WHERE id = $1", [tx.rows[0].book_id]);

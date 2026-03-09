@@ -40,7 +40,7 @@ export interface DbTransaction {
   buyer_id: string;
   seller_id: string;
   status: 'requested' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
-  order_status: 'book_given' | 'received' | null;
+  order_status: 'pending' | 'shipped' | 'delivered' | 'completed' | null;
   created_at: string;
   updated_at: string;
   book?: DbBook;

@@ -30,6 +30,7 @@ router.get("/:transactionId", requireAuth, async (req, res) => {
 
     const result = await query(
       `SELECT m.*,
+              COALESCE(m.message, m.content) as content,
               json_build_object('id', u.id, 'full_name', u.full_name,
                 'avatar_url', u.avatar_url) as sender
        FROM messages m
@@ -69,14 +70,15 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "You are not part of this transaction" });
     }
 
+    const recipientId = senderId === buyer_id ? seller_id : buyer_id;
+
     const result = await query(
-      `INSERT INTO messages (transaction_id, sender_id, content)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [transaction_id, senderId, content.trim()]
+      `INSERT INTO messages (transaction_id, sender_id, receiver_id, content, message)
+       VALUES ($1, $2, $3, $4, $4) RETURNING *`,
+      [transaction_id, senderId, recipientId, content.trim()]
     );
 
     // Notify the other party
-    const recipientId = senderId === buyer_id ? seller_id : buyer_id;
     await query(
       `INSERT INTO notifications (user_id, type, title, message, metadata)
        VALUES ($1, 'system', 'New Message', 'You have a new message about a book exchange', $2)`,
@@ -86,6 +88,7 @@ router.post("/", requireAuth, async (req, res) => {
     // Return message with sender info
     const full = await query(
       `SELECT m.*,
+              COALESCE(m.message, m.content) as content,
               json_build_object('id', u.id, 'full_name', u.full_name,
                 'avatar_url', u.avatar_url) as sender
        FROM messages m
@@ -94,7 +97,10 @@ router.post("/", requireAuth, async (req, res) => {
       [result.rows[0].id]
     );
 
-    res.status(201).json(full.rows[0]);
+    const payload = full.rows[0];
+    req.app.locals.io?.to(`tx:${transaction_id}`).emit("message:new", payload);
+
+    res.status(201).json(payload);
   } catch (err) {
     console.error("Send message error:", err);
     res.status(500).json({ error: "Failed to send message" });

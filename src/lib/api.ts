@@ -5,7 +5,7 @@
  * All API modules (books, transactions, favorites, notifications) use this.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE } from "@/config/api";
 
 /** Get the stored JWT token */
 export function getToken(): string | null {
@@ -62,7 +62,9 @@ export async function apiFetch<T = unknown>(
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
+  const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+
+  const res = await fetch(`${API_BASE}${normalizedEndpoint}`, {
     ...rest,
     headers,
   });

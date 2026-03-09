@@ -14,7 +14,7 @@ interface ChatWindowProps {
 }
 
 const ChatWindow = ({ transactionId, currentUserId }: ChatWindowProps) => {
-  const { messages, loading, sending, send } = useMessages(transactionId);
+  const { messages, loading, sending, send } = useMessages(transactionId, currentUserId);
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 

@@ -18,6 +18,7 @@ import { apiFetch } from "@/lib/api";
 import type { DbBook, DbUser, DbTransaction } from "@/types";
 import { deleteBook } from "@/lib/api/books";
 import { toast } from "sonner";
+import { resolveImageUrl, getFallbackImage } from "@/lib/url";
 
 interface AdminStats {
   totalUsers: number;
@@ -201,8 +202,11 @@ const Admin = () => {
             {books.map((b) => (
               <div key={b.id} className="glass-card-hover p-3 sm:p-4 rounded-xl flex items-center gap-3">
                 <img
-                  src={b.image_url || `https://picsum.photos/seed/${b.id}/400/560`}
+                  src={resolveImageUrl(b.image_url)}
                   alt={b.title}
+                  onError={(e) => {
+                    e.currentTarget.src = getFallbackImage();
+                  }}
                   className="w-10 h-14 rounded-lg object-cover flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">

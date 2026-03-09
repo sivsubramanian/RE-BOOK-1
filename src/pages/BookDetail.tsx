@@ -17,6 +17,7 @@ import type { DbBook, DbUser } from "@/types";
 import { toast } from "sonner";
 import { fetchRatingStats } from "@/lib/api/reviews";
 import type { RatingStats } from "@/types";
+import { resolveImageUrl, getFallbackImage } from "@/lib/url";
 
 const BookDetail = () => {
   const { id } = useParams();
@@ -110,7 +111,7 @@ const BookDetail = () => {
     );
   }
 
-  const imageUrl = book.image_url || `https://picsum.photos/seed/${book.id}/400/560`;
+  const imageUrl = resolveImageUrl(book.image_url);
   const sellerName = book.seller?.full_name || "Seller";
   const sellerAvatar = book.seller?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sellerName}`;
   const isOwner = user?.id === book.seller_id;
@@ -132,7 +133,14 @@ const BookDetail = () => {
 
           <div className="grid md:grid-cols-[300px_1fr] gap-4 sm:gap-8">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-3xl overflow-hidden glow-md">
-              <img src={imageUrl} alt={book.title} className="w-full aspect-[3/4] object-cover" />
+              <img
+                src={imageUrl}
+                alt={book.title}
+                onError={(e) => {
+                  e.currentTarget.src = getFallbackImage();
+                }}
+                className="w-full aspect-[3/4] object-cover"
+              />
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="flex flex-col">
@@ -174,7 +182,7 @@ const BookDetail = () => {
                   <p className="text-xs sm:text-sm font-medium text-foreground truncate">{sellerName}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Star className="w-3 h-3 fill-primary text-primary flex-shrink-0" />
-                    {sellerStats.review_count > 0 ? sellerStats.average_rating.toFixed(1) : "New"}
+                    {sellerStats.review_count > 0 ? Number(sellerStats?.average_rating ?? 0).toFixed(1) : "New"}
                     {sellerStats.review_count > 0 && (
                       <span className="opacity-60">({sellerStats.review_count})</span>
                     )}

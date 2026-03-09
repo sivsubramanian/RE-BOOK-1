@@ -126,7 +126,7 @@ router.get("/stats/:userId", async (req, res) => {
     const result = await query(
       `SELECT
          COUNT(*)::int as review_count,
-         COALESCE(ROUND(AVG(rating)::numeric, 1), 0) as average_rating
+        COALESCE(ROUND(AVG(rating)::numeric, 1), 0)::float as average_rating
        FROM reviews
        WHERE target_id = $1`,
       [req.params.userId]

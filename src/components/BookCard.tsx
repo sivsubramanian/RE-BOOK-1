@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Star, ArrowRight, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { DbBook } from "@/types";
+import { resolveImageUrl, getFallbackImage } from "@/lib/url";
 
 const conditionColors: Record<string, string> = {
   "Like New": "bg-primary/20 text-primary",
@@ -26,7 +27,7 @@ interface BookCardProps {
 }
 
 const BookCard = ({ book, index = 0, isFavorited = false, onToggleFavorite }: BookCardProps) => {
-  const imageUrl = book.image_url || book.image || `https://picsum.photos/seed/${book.id}/400/560`;
+  const imageUrl = resolveImageUrl((book.image_url || book.image) as string | undefined);
   const sellerName = book.seller?.full_name || book.sellerName || "Seller";
   const sellerRating = book.sellerRating || 4.5;
   const status = book.status || "available";
@@ -44,6 +45,9 @@ const BookCard = ({ book, index = 0, isFavorited = false, onToggleFavorite }: Bo
           <img
             src={imageUrl}
             alt={book.title}
+            onError={(e) => {
+              e.currentTarget.src = getFallbackImage();
+            }}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             loading="lazy"
           />

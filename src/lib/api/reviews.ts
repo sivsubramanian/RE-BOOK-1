@@ -35,5 +35,9 @@ export async function fetchTransactionReviews(txId: string): Promise<DbReview[]>
 
 /** Get rating stats for a user */
 export async function fetchRatingStats(userId: string): Promise<RatingStats> {
-  return apiFetch<RatingStats>(`/reviews/stats/${userId}`, { noAuth: true });
+  const raw = await apiFetch<RatingStats>(`/reviews/stats/${userId}`, { noAuth: true });
+  return {
+    review_count: Number((raw as RatingStats)?.review_count ?? 0),
+    average_rating: Number((raw as RatingStats)?.average_rating ?? 0),
+  };
 }

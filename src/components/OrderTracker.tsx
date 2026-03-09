@@ -1,7 +1,7 @@
 /**
  * OrderTracker – Visual step tracker for transaction lifecycle
  *
- * Steps: Requested → Accepted → Book Given → Received (Completed)
+ * Steps: Requested → Accepted → Shipped → Delivered (Completed)
  * Shows current position with colour-coded dots and connecting lines.
  */
 import { Check } from "lucide-react";
@@ -14,13 +14,13 @@ interface OrderTrackerProps {
 const steps = [
   { key: "requested", label: "Requested" },
   { key: "accepted", label: "Accepted" },
-  { key: "book_given", label: "Book Given" },
-  { key: "received", label: "Received" },
+  { key: "shipped", label: "Shipped" },
+  { key: "delivered", label: "Delivered" },
 ];
 
 function getActiveStep(status: string, orderStatus: string | null): number {
-  if (status === "completed" || orderStatus === "received") return 4;
-  if (orderStatus === "book_given") return 3;
+  if (status === "completed" || orderStatus === "delivered" || orderStatus === "completed") return 4;
+  if (orderStatus === "shipped") return 3;
   if (status === "accepted") return 2;
   if (status === "requested") return 1;
   return 0;

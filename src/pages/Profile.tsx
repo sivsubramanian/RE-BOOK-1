@@ -15,6 +15,7 @@ import { useUserReviews } from "@/hooks/useReviews";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { resolveImageUrl, getFallbackImage } from "@/lib/url";
 
 const tabs = ["Active Requests", "My Listings", "Favorites", "Completed"];
 
@@ -48,8 +49,9 @@ const Profile = () => {
   // Computed stats
   const stats = useMemo(() => {
     const completedCount = transactions.filter((t) => t.status === "completed").length;
+    const safeAverageRating = Number(ratingStats?.average_rating ?? 0);
     return {
-      rating: ratingStats.review_count > 0 ? ratingStats.average_rating.toFixed(1) : "–",
+      rating: ratingStats.review_count > 0 ? safeAverageRating.toFixed(1) : "–",
       reviewCount: ratingStats.review_count,
       reused: completedCount,
       listed: books.length,
@@ -270,8 +272,11 @@ const Profile = () => {
                     className="glass-card-hover p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4 cursor-pointer"
                   >
                     <img
-                      src={book.image_url || (book as any).image}
+                      src={resolveImageUrl(book.image_url || (book as any).image)}
                       alt={book.title}
+                      onError={(e) => {
+                        e.currentTarget.src = getFallbackImage();
+                      }}
                       className="w-10 h-14 sm:w-12 sm:h-16 rounded-lg sm:rounded-xl object-cover flex-shrink-0"
                       loading="lazy"
                     />
@@ -306,8 +311,11 @@ const Profile = () => {
                     className="glass-card-hover p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4 cursor-pointer"
                   >
                     <img
-                      src={fav.book?.image_url || `https://picsum.photos/seed/${fav.book_id}/400/560`}
+                      src={resolveImageUrl(fav.book?.image_url)}
                       alt={fav.book?.title || "Book"}
+                      onError={(e) => {
+                        e.currentTarget.src = getFallbackImage();
+                      }}
                       className="w-10 h-14 sm:w-12 sm:h-16 rounded-lg sm:rounded-xl object-cover flex-shrink-0"
                       loading="lazy"
                     />

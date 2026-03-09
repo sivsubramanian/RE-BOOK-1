@@ -6,7 +6,7 @@
  *  • OrderTracker for active & completed transactions
  *  • Inline ChatWindow per transaction (toggle)
  *  • ReviewForm for completed transactions
- *  • Action buttons: accept/reject/cancel/book-given/received
+ *  • Action buttons: accept/reject/cancel/mark-shipped/received
  */
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +30,7 @@ import { Link } from "react-router-dom";
 import OrderTracker from "@/components/OrderTracker";
 import ChatWindow from "@/components/ChatWindow";
 import ReviewForm from "@/components/ReviewForm";
+import { resolveImageUrl, getFallbackImage } from "@/lib/url";
 
 /* ── helpers ─────────────────────────────────────────── */
 
@@ -88,8 +89,11 @@ const TxCard = ({
         {tx.book && (
           <Link to={`/book/${tx.book.id}`} className="flex-shrink-0">
             <img
-              src={tx.book.image_url}
+              src={resolveImageUrl(tx.book.image_url)}
               alt={tx.book.title}
+              onError={(e) => {
+                e.currentTarget.src = getFallbackImage();
+              }}
               className="w-12 h-16 sm:w-14 sm:h-20 rounded-lg object-cover"
               loading="lazy"
             />
@@ -167,7 +171,7 @@ const TxCard = ({
         )}
 
         {/* Seller: book given (accepted, not yet given) */}
-        {isSeller && tx.status === "accepted" && tx.order_status !== "book_given" && (
+        {isSeller && tx.status === "accepted" && tx.order_status !== "shipped" && (
           <button
             onClick={() => bookGiven(tx.id)}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors text-xs font-medium"
@@ -186,8 +190,8 @@ const TxCard = ({
           </button>
         )}
 
-        {/* Buyer: confirm received (book_given) */}
-        {isBuyer && tx.order_status === "book_given" && tx.status === "accepted" && (
+        {/* Buyer: confirm received (shipped) */}
+        {isBuyer && tx.order_status === "shipped" && tx.status === "accepted" && (
           <button
             onClick={() => markReceived(tx.id)}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors text-xs font-medium"

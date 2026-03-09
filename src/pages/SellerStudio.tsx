@@ -19,6 +19,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { createBook, deleteBook, uploadBookImage } from "@/lib/api/books";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { resolveImageUrl, getFallbackImage } from "@/lib/url";
 
 const departments = ["Computer Science", "Electrical Eng.", "Mechanical Eng.", "Business Admin", "Mathematics", "Physics", "Chemistry", "Literature"];
 const conditions: Array<"Like New" | "Good" | "Fair"> = ["Like New", "Good", "Fair"];
@@ -267,8 +268,15 @@ const SellerStudio = () => {
                 transition={{ delay: i * 0.05 }}
                 className="glass-card-hover rounded-xl sm:rounded-2xl overflow-hidden group relative">
                 <Link to={`/book/${book.id}`}>
-                  <img src={book.image_url || (book as any).image} alt={book.title}
-                    className="w-full aspect-[3/4] object-cover" loading="lazy" />
+                  <img
+                    src={resolveImageUrl(book.image_url || (book as any).image)}
+                    alt={book.title}
+                    onError={(e) => {
+                      e.currentTarget.src = getFallbackImage();
+                    }}
+                    className="w-full aspect-[3/4] object-cover"
+                    loading="lazy"
+                  />
                 </Link>
                 <div className="p-2.5 sm:p-3">
                   <p className="text-xs sm:text-sm font-medium text-foreground line-clamp-1">{book.title}</p>
