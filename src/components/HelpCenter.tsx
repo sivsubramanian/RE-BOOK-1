@@ -16,7 +16,7 @@ const HelpCenter = ({ variant = "profile", className }: HelpCenterProps) => {
 
   const triggerClass =
     variant === "floating"
-      ? "w-12 h-12 sm:w-14 sm:h-14 rounded-full glass-card border border-border/60 shadow-lg hover:bg-muted/60 text-foreground transition-colors flex items-center justify-center"
+      ? "w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-primary-foreground border border-primary/40 shadow-lg shadow-primary/30 ring-2 ring-primary/25 hover:scale-105 transition-all duration-200 flex items-center justify-center animate-glow-pulse"
       : variant === "navbar"
       ? "flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
       : "w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium glass-card hover:bg-muted/50 text-foreground transition-colors";
@@ -24,7 +24,11 @@ const HelpCenter = ({ variant = "profile", className }: HelpCenterProps) => {
   return (
     <>
       <button onClick={() => setOpen(true)} className={cn(triggerClass, className)}>
-        <LifeBuoy className="w-4 h-4" />
+        {variant === "floating" ? (
+          <span className="text-xl sm:text-2xl font-extrabold leading-none">?</span>
+        ) : (
+          <LifeBuoy className="w-4 h-4" />
+        )}
         {variant !== "floating" && <span>Help Centre</span>}
       </button>
 
