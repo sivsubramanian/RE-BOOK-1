@@ -1,392 +1,482 @@
-# RE-BOOK-1 – Smart Campus Book Exchange Platform
+# 📚 RE-BOOK
 
-> A production-ready peer-to-peer textbook exchange platform for college campuses, powered by a custom AI recommendation engine using **TF-IDF + Cosine Similarity + Rule-Based NLP Intent Detection**.
+### Smart Campus Book Exchange Platform
 
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
-![Supabase](https://img.shields.io/badge/Supabase-Auth+DB-3FCF8E?logo=supabase)
-![Tailwind](https://img.shields.io/badge/TailwindCSS-3-06B6D4?logo=tailwindcss)
-![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite)
+RE-BOOK is a **campus-based book exchange platform** that allows students to **buy, sell, and exchange academic books within their college community**. The platform integrates **AI-powered search, chatbot recommendations, transaction tracking, reviews, and in-app messaging** to create a complete peer-to-peer academic marketplace.
 
 ---
 
-## Table of Contents
+# 🚀 Project Overview
 
-1. [Features](#features)
-2. [Architecture](#architecture)
-3. [AI Recommendation Engine](#ai-recommendation-engine)
-4. [Tech Stack](#tech-stack)
-5. [Database Schema](#database-schema)
-6. [Getting Started](#getting-started)
-7. [Project Structure](#project-structure)
-8. [Security](#security)
-9. [API Reference](#api-reference)
+Students often purchase textbooks that become unused after a semester. RE-BOOK solves this problem by creating a **smart campus marketplace** where students can:
 
----
+* Sell used books
+* Discover affordable books
+* Chat with buyers/sellers
+* Track transactions
+* Receive AI-based recommendations
+* Leave reviews and feedback
 
-## Features
-
-### Core
-- **Smart Book Search** – Full-text search with department, semester, condition, and price range filters
-- **AI-Powered Recommendations** – TF-IDF + Cosine Similarity chatbot assistant
-- **P2P Transaction System** – Request → Accept/Reject → Complete workflow
-- **Image OCR** – Extract text from book covers/notes using Tesseract.js
-- **Analytics Dashboard** – Recharts-powered platform insights
-
-### Authentication
-- **Supabase Auth** – Email/password with session persistence & auto-refresh
-- **College Email Restriction** – Only `.edu`, `.ac.in`, `.edu.in` domains allowed
-- **Password Strength Meter** – Real-time strength indicator on signup
-- **Role-Based Access** – Buyer / Seller roles with RLS enforcement
-
-### Book Module
-- **CRUD Operations** – Create, read, update, delete book listings via Supabase
-- **Image Upload** – File validation (JPEG/PNG/WebP, max 5MB) with Supabase Storage
-- **Status Tracking** – Available → Requested → Sold lifecycle
-- **View Count** – Atomic view increment via PostgreSQL RPC
-
-### Seller Studio
-- **Add Book Modal** – Full form with image upload, department, semester, condition, price
-- **Incoming Requests** – Accept/reject/complete transaction requests
-- **Live Stats** – Books listed, pending requests, accepted, completed
-- **Listing Management** – View counts, delete books
-
-### AI Module
-- **TF-IDF Vectorization** – Term frequency × inverse document frequency scoring
-- **Cosine Similarity** – Vector space model for document-query matching
-- **Intent Detection** – 8 intents: search_subject, search_cheap, search_semester, search_department, search_condition, recommendation, greeting, help
-- **Entity Extraction** – Semester numbers, price limits, department names, conditions
-- **Cold-Start Fallback** – Trending/popular books for new users
-- **Personalized Ranking** – Department + semester + popularity scoring
+The system combines **modern web technologies with AI recommendation algorithms** to provide an intelligent book discovery experience.
 
 ---
 
-## Architecture
+# 🎯 Key Features
+
+## 🤖 AI Chatbot & Smart Recommendation
+
+* AI-powered chatbot assists users in finding books
+* Natural language search queries
+* Personalized book recommendations
+* Genre and subject-based suggestions
+* Recommendation algorithm based on:
+
+  * TF-IDF vectorization
+  * Cosine similarity
+  * User preference profiling
+  * Popularity ranking
+
+Example queries:
 
 ```
-┌──────────────────────────────────────────────────────┐
-│                    Frontend (React)                   │
-│  ┌─────────┐  ┌──────────┐  ┌─────────────────────┐ │
-│  │  Pages   │  │Components│  │    AI Engine         │ │
-│  │ (Index,  │  │ (Navbar, │  │ (TF-IDF, Cosine    │ │
-│  │ Search,  │  │  BookCard,│  │  Similarity, NLP)  │ │
-│  │ Profile) │  │  AI Chat)│  │                     │ │
-│  └────┬─────┘  └────┬─────┘  └──────────┬──────────┘ │
-│       │              │                   │            │
-│  ┌────▼──────────────▼───────────────────▼──────────┐│
-│  │              React Hooks Layer                    ││
-│  │  useBooks()  useTransactions()  useAuth()         ││
-│  └──────────────────┬───────────────────────────────┘│
-│                     │                                 │
-│  ┌──────────────────▼───────────────────────────────┐│
-│  │              API Services Layer                   ││
-│  │  books.ts    transactions.ts    supabase.ts       ││
-│  └──────────────────┬───────────────────────────────┘│
-└─────────────────────┼────────────────────────────────┘
-                      │ HTTPS
-┌─────────────────────▼────────────────────────────────┐
-│                  Supabase Backend                     │
-│  ┌──────────┐  ┌───────────┐  ┌──────────────────┐  │
-│  │   Auth   │  │ PostgreSQL│  │  Storage          │  │
-│  │ (JWT +   │  │ (RLS +    │  │  (Book images)   │  │
-│  │  Session)│  │  Triggers)│  │                   │  │
-│  └──────────┘  └───────────┘  └──────────────────┘  │
-└──────────────────────────────────────────────────────┘
+Suggest AI books
+Cheap data science books
+Books for semester 4
+Popular networking books
 ```
 
 ---
 
-## AI Recommendation Engine
+# 🔍 Advanced AI Search
 
-### Algorithm Pipeline
+The system supports **semantic search and intelligent filtering**.
 
-```
-User Query
-    │
-    ▼
-┌─────────────────┐
-│ NLP Preprocessing│  → Tokenize, remove stopwords, stem
-└────────┬────────┘
-         │
-    ▼────▼────▼
-┌───────────────────┐    ┌──────────────────────┐
-│ Intent Detection  │    │  Entity Extraction   │
-│ (8 rule-based     │    │  - semester: "5"     │
-│  patterns)        │    │  - maxPrice: "200"   │
-└────────┬──────────┘    │  - department: "CSE" │
-         │               └──────────┬───────────┘
-         │                          │
-    ▼────▼──────────────────────────▼
-┌────────────────────────────────────┐
-│      TF-IDF Vectorization          │
-│  tf(t,d) = count(t) / |d|         │
-│  idf(t) = log((N+1)/(df+1)) + 1   │
-│  tfidf(t,d) = tf × idf            │
-└────────────────┬───────────────────┘
-                 │
-    ▼────────────▼
-┌────────────────────────────────────┐
-│      Cosine Similarity             │
-│                                    │
-│  sim(q,d) = (q·d) / (|q| × |d|)  │
-└────────────────┬───────────────────┘
-                 │
-    ▼────────────▼
-┌────────────────────────────────────┐
-│      Heuristic Boosting            │
-│  + Department match    (+0.30)     │
-│  + Semester match      (+0.25)     │
-│  + Budget compliance   (+0.20)     │
-│  + User profile match  (+0.15)     │
-│  + Availability bonus  (+0.05)     │
-│  + Popularity (views)  (+0.10)     │
-└────────────────┬───────────────────┘
-                 │
-    ▼────────────▼
-┌────────────────────────────────────┐
-│      Top-N Ranking & Response      │
-│  Sort by score → format response   │
-└────────────────────────────────────┘
-```
+Search features:
 
-### Intent Categories
+* Natural language search
+* Genre detection
+* Department filtering
+* Semester filtering
+* Price filtering
+* Smart ranking of results
 
-| Intent | Example Query | Pattern |
-|--------|--------------|---------|
-| `search_cheap` | "Books under ₹200" | `/cheap\|budget\|under\s*\d+/i` |
-| `search_semester` | "Semester 5 books" | `/sem(?:ester)?\s*\d/i` |
-| `search_department` | "CSE department books" | `/computer\s*science\|cse/i` |
-| `search_subject` | "Machine learning books" | `/ai\|ml\|data\|algorithm/i` |
-| `search_condition` | "Like new books" | `/like\s*new\|good\s*condition/i` |
-| `recommendation` | "Recommend books for me" | `/recommend\|suggest\|best/i` |
-| `greeting` | "Hello" | `/^(hi\|hello\|hey)/i` |
-| `help` | "How can you help?" | `/help\|how\s*(do\|can\|to)/i` |
+Search ranking factors:
+
+* Content similarity
+* User taste profile
+* Book popularity
+* User activity history
 
 ---
 
-## Tech Stack
+# 📦 Transaction & Order Tracking System
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| Frontend | React 18 + TypeScript | UI framework |
-| Build Tool | Vite 5 | Fast HMR, ESBuild |
-| Styling | Tailwind CSS + shadcn/ui | Utility-first CSS + accessible components |
-| State | React Query + Custom Hooks | Server state caching |
-| Auth | Supabase Auth | JWT sessions, email verification |
-| Database | Supabase PostgreSQL | RLS-protected data |
-| Storage | Supabase Storage | Book cover images |
-| AI | TF-IDF + Cosine Similarity | Custom recommendation engine |
-| NLP | Rule-Based Intent Detection | Query understanding |
-| OCR | Tesseract.js | Image text extraction |
-| Charts | Recharts | Analytics visualizations |
-| Animation | Framer Motion | Page transitions, hover effects |
-| Icons | Lucide React | SVG icon library |
+RE-BOOK includes a complete **transaction lifecycle management system**.
+
+### Order Status Flow
+
+```
+Requested → Accepted → Book Given → Received → Completed
+```
+
+Transaction features:
+
+* Book request system
+* Seller approval
+* Order tracking
+* Buyer confirmation (Received button)
+* Transaction history dashboard
+
+Example workflow:
+
+1. Buyer requests book
+2. Seller accepts request
+3. Seller hands over book
+4. Buyer confirms receipt
+5. Transaction completed
 
 ---
 
-## Database Schema
+# ⭐ Review & Feedback System
 
-### ER Diagram
+After a transaction is completed, both users can leave feedback.
+
+### Review capabilities
+
+* Buyer reviews seller
+* Seller reviews buyer
+* Rating system (1–5 stars)
+* Comment feedback
+* Average rating displayed on profiles
+
+Example:
 
 ```
-┌──────────────────┐       ┌──────────────────┐
-│     profiles     │       │      books       │
-├──────────────────┤       ├──────────────────┤
-│ id (PK, UUID)    │──┐    │ id (PK, UUID)    │
-│ email            │  │    │ title            │
-│ full_name        │  │    │ author           │
-│ department       │  │    │ description      │
-│ semester         │  ├───▶│ seller_id (FK)   │
-│ role             │  │    │ department       │
-│ avatar_url       │  │    │ semester         │
-│ created_at       │  │    │ condition        │
-└──────────────────┘  │    │ price            │
-                      │    │ image_url        │
-                      │    │ status           │
-                      │    │ views_count      │
-                      │    │ created_at       │
-                      │    └────────┬─────────┘
-                      │             │
-                      │    ┌────────▼─────────┐
-                      │    │  transactions    │
-                      │    ├──────────────────┤
-                      │    │ id (PK, UUID)    │
-                      ├───▶│ buyer_id (FK)    │
-                      └───▶│ seller_id (FK)   │
-                           │ book_id (FK)     │
-                           │ status           │
-                           │ created_at       │
-                           │ updated_at       │
-                           └──────────────────┘
+⭐ Seller Rating: 4.6
+Based on 23 reviews
 ```
 
-### Row-Level Security (RLS)
-
-- **profiles**: Users can read all; update only their own
-- **books**: Anyone can read; only sellers can insert/update/delete their own
-- **transactions**: Participants (buyer/seller) can read; buyers create; sellers update status
+This builds **trust within the marketplace**.
 
 ---
 
-## Getting Started
+# 💬 Buyer–Seller In-App Chat
 
-### Prerequisites
+Users can communicate directly through the platform.
 
-- Node.js 18+ (or Bun)
-- Supabase project (free tier works)
+Chat features:
 
-### 1. Clone & Install
+* Real-time messaging
+* Transaction-specific conversations
+* Message timestamps
+* Chat UI with message bubbles
+* Secure communication between buyer and seller
 
-```bash
-git clone <repo-url>
-cd RE-BOOK-1
-npm install  # or bun install
+Example chat:
+
 ```
-
-### 2. Supabase Setup
-
-1. Create a project at [supabase.com](https://supabase.com)
-2. Run the SQL schema from `supabase/schema.sql` in the SQL Editor
-3. Enable email auth in Authentication → Providers
-4. Create a storage bucket named `book-images` (public)
-
-### 3. Environment Variables
-
-Copy `.env.example` to `.env`:
-
-```bash
-cp .env.example .env
+Buyer: Is the book still available?
+Seller: Yes, you can collect it tomorrow.
+Buyer: Okay, thanks!
 ```
-
-Fill in your Supabase credentials:
-
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
-
-### 4. Run Development Server
-
-```bash
-npm run dev  # or bun dev
-```
-
-The app runs at `http://localhost:8080`.
 
 ---
 
-## Project Structure
+# 📊 Analytics Dashboard
+
+The system includes an analytics page that visualizes platform activity.
+
+Analytics features:
+
+* Total books listed
+* Average book price
+* Department distribution
+* Monthly listing trends
+* Transaction completion rate
+
+Charts built using **Recharts**.
+
+---
+
+# 📷 OCR Book Search
+
+Users can upload an image containing text, and the system extracts book information using **OCR technology**.
+
+Technologies used:
+
+* Tesseract.js
+* Image text recognition
+* Search suggestions from extracted text
+
+---
+
+# 🧑‍🎓 User Roles
+
+### Buyer
+
+* Search books
+* Request books
+* Chat with seller
+* Track transactions
+* Mark book as received
+* Leave reviews
+
+### Seller
+
+* List books
+* Manage listings
+* Accept or reject requests
+* Chat with buyers
+* Track completed transactions
+
+---
+
+# 🏗️ System Architecture
 
 ```
-src/
-├── App.tsx                        # Root component with routing
-├── main.tsx                       # Entry point
-├── index.css                      # Tailwind base + custom theme
+Frontend (React + TypeScript)
+        │
+        │
+        ├── AI Recommendation Engine
+        ├── Chatbot Interface
+        ├── Transaction Tracking
+        ├── Reviews & Ratings
+        └── Chat System
+        │
+Backend API (Node / PostgreSQL)
+        │
+PostgreSQL Database
+```
+
+---
+
+# 🧠 AI Recommendation Engine
+
+The recommendation system uses a **hybrid algorithm** combining:
+
+### 1. Content-Based Filtering
+
+Analyzes book metadata such as:
+
+* Title
+* Author
+* Description
+* Genre
+* Department
+* Semester
+
+Uses:
+
+```
+TF-IDF Vectorization
+Cosine Similarity
+```
+
+---
+
+### 2. User Preference Modeling
+
+User taste is inferred from:
+
+* Search history
+* Book views
+* Favorites
+* Purchases
+
+This generates a **user interest profile** used for recommendations.
+
+---
+
+### 3. Popularity Ranking
+
+Books are also ranked based on:
+
+* Views
+* Transactions
+* Ratings
+
+Final score formula:
+
+```
+score =
+(0.5 × query_similarity)
++
+(0.3 × user_preference_similarity)
++
+(0.2 × popularity_score)
+```
+
+---
+
+# 🗄️ Database Schema
+
+Main tables:
+
+```
+users
+books
+transactions
+favorites
+reviews
+messages
+user_activity
+notifications
+```
+
+---
+
+### Books Table
+
+Stores book listings.
+
+Fields include:
+
+* title
+* author
+* department
+* semester
+* price
+* condition
+* status
+
+---
+
+### Transactions Table
+
+Manages book exchange lifecycle.
+
+Key fields:
+
+* buyer_id
+* seller_id
+* order_status
+* created_at
+
+---
+
+### Reviews Table
+
+Stores feedback between users.
+
+Fields:
+
+* reviewer_id
+* rating
+* comment
+
+---
+
+### Messages Table
+
+Handles buyer–seller chat.
+
+Fields:
+
+* sender_id
+* receiver_id
+* message
+* timestamp
+
+---
+
+# 🖥️ Tech Stack
+
+### Frontend
+
+* React 18
+* TypeScript
+* Vite
+* Tailwind CSS
+* shadcn/ui
+* React Router
+* Recharts
+
+### Backend
+
+* Node.js
+* Express.js
+* PostgreSQL
+
+### AI & Data Processing
+
+* TF-IDF Vectorization
+* Cosine Similarity
+* Rule-based NLP
+* Tesseract.js OCR
+
+---
+
+# 📂 Project Structure
+
+```
+RE-BOOK
 │
-├── components/
-│   ├── AIAssistant.tsx            # Floating AI chatbot (TF-IDF powered)
-│   ├── BookCard.tsx               # Universal book card component
-│   ├── FilterChips.tsx            # Reusable filter chip component
-│   ├── ImageOCR.tsx               # Tesseract.js OCR scanner
-│   ├── Navbar.tsx                 # Auth-aware navigation + profile dropdown
-│   ├── NavLink.tsx                # Animated nav link
-│   ├── ProtectedRoute.tsx         # Auth guard HOC
-│   └── ui/                        # shadcn/ui primitives
+├── frontend
+│   ├── components
+│   ├── pages
+│   ├── hooks
+│   ├── lib
+│   └── contexts
 │
-├── context/
-│   └── AuthContext.tsx            # Supabase Auth provider + session mgmt
+├── backend
+│   ├── routes
+│   ├── middleware
+│   └── server.js
 │
-├── hooks/
-│   ├── useBooks.ts                # Book data hook (Supabase + mock fallback)
-│   └── useTransactions.ts         # Transaction management hook
+├── database
+│   └── schema.sql
 │
-├── lib/
-│   ├── supabase.ts                # Supabase client + type definitions
-│   ├── mockData.ts                # Fallback mock data
-│   ├── utils.ts                   # Utility functions (cn, etc.)
-│   ├── ai/
-│   │   └── recommendation.ts     # AI engine: TF-IDF + Cosine Similarity + NLP
-│   └── api/
-│       ├── books.ts               # Book CRUD + image upload
-│       └── transactions.ts        # Transaction operations + analytics
-│
-├── pages/
-│   ├── Analytics.tsx              # Dashboard with Recharts
-│   ├── Auth.tsx                   # Login/Signup with validation
-│   ├── BookDetail.tsx             # Book view + transaction flow
-│   ├── Index.tsx                  # Home with AI recommendations
-│   ├── NotFound.tsx               # 404 page
-│   ├── Profile.tsx                # User profile + edit + transaction tabs
-│   ├── Search.tsx                 # Full-featured search with pagination
-│   ├── SellerStudio.tsx           # Seller dashboard + add book modal
-│   └── Transactions.tsx           # Transaction history + actions
-│
-└── test/
-    ├── example.test.ts
-    └── setup.ts
-
-supabase/
-├── config.toml
-└── schema.sql                     # Complete DB schema with RLS + triggers
+└── README.md
 ```
 
 ---
 
-## Security
+# ⚙️ Installation & Setup
 
-| Measure | Implementation |
-|---------|---------------|
-| **RLS Policies** | All tables protected by Row-Level Security |
-| **JWT Auth** | Supabase handles token issuance and validation |
-| **Session Persistence** | `autoRefreshToken: true`, `persistSession: true` |
-| **Email Validation** | College domain restriction (`.edu`, `.ac.in`) |
-| **Password Policy** | Min 6 chars, strength meter (weak/fair/good/strong) |
-| **File Validation** | Image type whitelist, 5MB size limit |
-| **Input Sanitization** | All user inputs trimmed; SQL injection prevented by Supabase SDK |
-| **XSS Prevention** | React's built-in JSX escaping + no `dangerouslySetInnerHTML` |
-| **Environment Variables** | API keys in `.env`, not committed to git |
+### 1️⃣ Clone Repository
+
+```
+git clone https://github.com/your-username/re-book.git
+cd re-book
+```
 
 ---
 
-## API Reference
+### 2️⃣ Install Dependencies
 
-### Books API (`src/lib/api/books.ts`)
+Frontend:
 
-| Function | Description |
-|----------|-------------|
-| `fetchBooks(filters)` | Paginated, filtered book list |
-| `fetchBookById(id)` | Single book with seller data |
-| `createBook(data)` | Create listing (auth required) |
-| `updateBook(id, data)` | Update own listing |
-| `deleteBook(id)` | Delete own listing |
-| `incrementViews(id)` | Atomic view counter |
-| `uploadBookImage(file, userId)` | Upload to Supabase Storage |
+```
+npm install
+```
 
-### Transactions API (`src/lib/api/transactions.ts`)
+Backend:
 
-| Function | Description |
-|----------|-------------|
-| `createTransaction(bookId, buyerId, sellerId)` | Request a book |
-| `acceptTransaction(txId)` | Seller accepts |
-| `rejectTransaction(txId)` | Seller rejects |
-| `cancelTransaction(txId)` | Buyer cancels |
-| `completeTransaction(txId)` | Mark as done |
-| `fetchUserTransactions(userId, role)` | Get user's transactions |
-| `hasActiveRequest(bookId, buyerId)` | Check existing request |
-| `fetchAnalytics()` | Platform-wide stats |
-
-### AI Engine (`src/lib/ai/recommendation.ts`)
-
-| Function | Description |
-|----------|-------------|
-| `detectIntent(query)` | Classify query into 8 intents |
-| `getRecommendations(query, books, profile, topN)` | TF-IDF + Cosine Similarity search |
-| `getColdStartRecommendations(books, topN)` | Fallback for new users |
-| `getPersonalizedRecommendations(books, profile, topN)` | Profile-based ranking |
-| `generateResponse(query, intent, results, entities)` | Format AI response text |
+```
+cd backend
+npm install
+```
 
 ---
 
-## License
+### 3️⃣ Run Application
 
-MIT © ReBook Team
+Start backend:
+
+```
+node server.js
+```
+
+Start frontend:
+
+```
+npm run dev
+```
+
+---
+
+# 🌐 Application Pages
+
+* Home Dashboard
+* Search Books
+* Book Detail
+* Seller Studio
+* Transactions Page
+* Analytics Dashboard
+* User Profile
+* AI Chatbot Assistant
+
+---
+
+# 🔐 Security Features
+
+* Authentication system
+* Protected routes
+* Input validation
+* Secure transaction handling
+* Role-based access
+
+---
+
+# 📈 Future Enhancements
+
+Potential improvements:
+
+* Real-time notifications
+* AI collaborative filtering
+* Book recommendation using embeddings
+* Mobile app version
+* Payment integration
+* Blockchain transaction verification
+
+---
+
+# 👨‍💻 Authors
+
+Developed as a **Final Year Project** for the **AI & Data Science program**.
+
+---
+
+# 📜 License
+
+This project is developed for **academic and research purposes**.
