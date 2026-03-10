@@ -124,7 +124,7 @@ const TxCard = ({
           </div>
 
           {/* Role + date */}
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
             {isBuyer && (
               <span className="flex items-center gap-1">
                 <BookOpen className="w-3 h-3" />
@@ -137,7 +137,7 @@ const TxCard = ({
                 {tx.buyer?.full_name || "Buyer"} requested this
               </span>
             )}
-            <span className="flex items-center gap-1 ml-auto">
+            <span className="flex items-center gap-1 sm:ml-auto">
               <Clock className="w-3 h-3" />
               {new Date(tx.created_at).toLocaleDateString()}
             </span>
@@ -217,7 +217,7 @@ const TxCard = ({
               setChatOpen((v) => !v);
               if (reviewOpen) setReviewOpen(false);
             }}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ml-auto ${
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors sm:ml-auto ${
               chatOpen
                 ? "bg-primary/30 text-primary"
                 : "bg-muted text-muted-foreground hover:text-foreground"

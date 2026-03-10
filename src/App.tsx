@@ -7,6 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 import AIAssistant from "@/components/AIAssistant";
+import HelpCenter from "@/components/HelpCenter";
 import Index from "./pages/Index";
 import BookDetail from "./pages/BookDetail";
 import Search from "./pages/Search";
@@ -44,6 +45,11 @@ const AppContent = () => {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+      {!isAuthPage && (
+        <div className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 z-50">
+          <HelpCenter variant="floating" />
+        </div>
+      )}
       {!isAuthPage && <AIAssistant />}
     </>
   );

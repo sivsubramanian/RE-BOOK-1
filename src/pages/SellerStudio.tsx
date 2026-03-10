@@ -206,7 +206,7 @@ const SellerStudio = () => {
             {pendingTx.map((tx, i) => (
               <motion.div key={tx.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06 }}
-                className="glass-card-hover p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4">
+                className="glass-card-hover p-3 sm:p-4 rounded-xl sm:rounded-2xl flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                     {tx.book?.title || "Book"}
@@ -219,7 +219,7 @@ const SellerStudio = () => {
                 <span className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-semibold capitalize ${statusStyle[tx.status]}`}>
                   {tx.status}
                 </span>
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5 sm:ml-auto">
                   {tx.status === "requested" && (
                     <>
                       <button onClick={() => accept(tx.id)}

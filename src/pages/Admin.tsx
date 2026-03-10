@@ -172,7 +172,7 @@ const Admin = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
             <p className="text-xs text-muted-foreground mb-3">{users.length} registered users</p>
             {users.map((u) => (
-              <div key={u.id} className="glass-card-hover p-3 sm:p-4 rounded-xl flex items-center gap-3">
+              <div key={u.id} className="glass-card-hover p-3 sm:p-4 rounded-xl flex flex-wrap sm:flex-nowrap items-center gap-3">
                 <img
                   src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.full_name)}`}
                   alt={u.full_name}
@@ -182,7 +182,7 @@ const Admin = () => {
                   <p className="text-xs sm:text-sm font-medium text-foreground truncate">{u.full_name || "Unnamed"}</p>
                   <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                 </div>
-                <span className="text-xs text-muted-foreground">{u.department}</span>
+                <span className="hidden sm:inline text-xs text-muted-foreground">{u.department}</span>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${
                   u.role === "admin" ? "bg-red-500/20 text-red-400" :
                   u.role === "seller" ? "bg-primary/20 text-primary" :
@@ -200,7 +200,7 @@ const Admin = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
             <p className="text-xs text-muted-foreground mb-3">{books.length} total listings</p>
             {books.map((b) => (
-              <div key={b.id} className="glass-card-hover p-3 sm:p-4 rounded-xl flex items-center gap-3">
+              <div key={b.id} className="glass-card-hover p-3 sm:p-4 rounded-xl flex flex-wrap sm:flex-nowrap items-center gap-3">
                 <img
                   src={resolveImageUrl(b.image_url)}
                   alt={b.title}
@@ -240,7 +240,7 @@ const Admin = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
             <p className="text-xs text-muted-foreground mb-3">{transactions.length} total transactions</p>
             {transactions.map((tx) => (
-              <div key={tx.id} className="glass-card-hover p-3 sm:p-4 rounded-xl flex items-center gap-3">
+              <div key={tx.id} className="glass-card-hover p-3 sm:p-4 rounded-xl flex flex-wrap sm:flex-nowrap items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                     {(tx.book as DbBook | undefined)?.title || "Book"}
