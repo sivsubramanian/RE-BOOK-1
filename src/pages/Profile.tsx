@@ -14,6 +14,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useUserReviews } from "@/hooks/useReviews";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import HelpCenter from "@/components/HelpCenter";
 import { toast } from "sonner";
 import { resolveImageUrl, getFallbackImage } from "@/lib/url";
 
@@ -188,6 +189,10 @@ const Profile = () => {
             {loggingOut ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2 animate-spin" /> : <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />}
             {loggingOut ? "Logging out…" : "Log Out"}
           </Button>
+
+          <div className="mt-3 sm:mt-4">
+            <HelpCenter variant="profile" />
+          </div>
         </motion.div>
 
         {/* Tabs */}

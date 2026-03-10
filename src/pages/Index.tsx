@@ -2,7 +2,7 @@
  * Home Page – Dashboard with AI-powered recommendations
  * Uses Supabase data with fallback to mock data
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, TrendingUp, Clock, IndianRupee, Loader2, BookOpen } from "lucide-react";
 import BookCard from "@/components/BookCard";
@@ -15,29 +15,38 @@ import type { DbUser } from "@/types";
 const Index = () => {
   const { profile, displayName } = useAuth();
   const { books, loading } = useAllBooks();
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
+
+  const filteredBooks = useMemo(() => {
+    if (!selectedSemester) return books;
+    return books.filter((book) => Number(book.semester) === selectedSemester);
+  }, [books, selectedSemester]);
 
   // AI-powered sections
   const sections = useMemo(() => {
     if (!books.length) return [];
 
+    if (!filteredBooks.length) return [];
+
     // "Recommended for You" using AI engine
     const recommended = profile
-      ? getPersonalizedRecommendations(books, profile as DbUser, 4)
-      : getColdStartRecommendations(books, 4);
+      ? getPersonalizedRecommendations(filteredBooks, profile as DbUser, 4)
+      : getColdStartRecommendations(filteredBooks, 4);
 
     // Recently listed
-    const recent = [...books]
+    const recent = [...filteredBooks]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 4);
 
     // Budget-friendly (cheapest available)
-    const budget = [...books]
+    const budget = [...filteredBooks]
       .filter(b => b.status === "available")
       .sort((a, b) => a.price - b.price)
       .slice(0, 4);
 
     // Trending (most views)
-    const trending = [...books]
+    const trending = [...filteredBooks]
       .sort((a, b) => b.views_count - a.views_count)
       .slice(0, 4);
 
@@ -52,7 +61,7 @@ const Index = () => {
       { title: "Recently Listed", icon: Clock, books: recent },
       { title: "Budget-Friendly Picks", icon: IndianRupee, books: budget },
     ];
-  }, [books, profile]);
+  }, [books, profile, filteredBooks]);
 
   if (loading) {
     return (
@@ -97,10 +106,38 @@ const Index = () => {
 
       {/* Filters */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 mb-6 sm:mb-8">
-        <FilterChips />
+        <FilterChips
+          activeFilter={activeFilter}
+          onSelect={(filter) => {
+            setActiveFilter(filter);
+            if (filter === "All") {
+              setSelectedSemester(null);
+              return;
+            }
+
+            const match = filter.match(/\d+/);
+            const parsed = match ? Number(match[0]) : Number.NaN;
+            setSelectedSemester(Number.isNaN(parsed) ? null : parsed);
+          }}
+        />
+        <div className="mt-3 text-xs sm:text-sm text-muted-foreground">
+          Showing: <span className="text-foreground font-medium">{activeFilter}</span>
+          <span className="mx-2">•</span>
+          <span>{filteredBooks.length} book{filteredBooks.length !== 1 ? "s" : ""}</span>
+        </div>
       </div>
 
       {/* Sections */}
+      {selectedSemester && sections.length === 0 && (
+        <section className="max-w-7xl mx-auto px-3 sm:px-6 mb-8 sm:mb-12">
+          <div className="text-center py-10 glass-card rounded-2xl">
+            <p className="text-muted-foreground text-sm">
+              No books available for Sem {selectedSemester} right now.
+            </p>
+          </div>
+        </section>
+      )}
+
       {sections.map((section, sIdx) => (
         <section key={section.title} className="max-w-7xl mx-auto px-3 sm:px-6 mb-8 sm:mb-12">
           <motion.div
