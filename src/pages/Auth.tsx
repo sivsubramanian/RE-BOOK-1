@@ -13,8 +13,8 @@ const DEPARTMENTS = [
   "Business Admin", "Mathematics", "Physics", "Chemistry", "Literature"
 ];
 
-/** Rate-limit cooldown in ms (prevents rapid-fire auth attempts) */
-const AUTH_COOLDOWN_MS = 2000;
+/** Short cooldown in ms to prevent accidental double-submit */
+const AUTH_COOLDOWN_MS = 600;
 
 /** Password strength checker */
 function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
@@ -78,22 +78,22 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(cleanEmail, password);
         if (error) {
           toast.error(error);
         } else {
           toast.success("Welcome back to ReBook!");
-          navigate("/home");
+          // Session update triggers redirect via useEffect to avoid double navigation.
         }
       } else {
         // Validate college email
-        if (!isCollegeEmail(email)) {
+        if (!isCollegeEmail(cleanEmail)) {
           toast.error("Please use your college email (.edu, .ac.in, .edu.in)");
           setLoading(false);
           return;
         }
 
-        const { error } = await signUp(email, password, {
+        const { error } = await signUp(cleanEmail, password, {
           full_name: fullName,
           department,
           semester,
