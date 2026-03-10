@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Book, Mail, Lock, User, ArrowRight, Sparkles, Eye, EyeOff, GraduationCap, Building2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { API_BASE } from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -13,8 +14,8 @@ const DEPARTMENTS = [
   "Business Admin", "Mathematics", "Physics", "Chemistry", "Literature"
 ];
 
-/** Short cooldown in ms to prevent accidental double-submit */
-const AUTH_COOLDOWN_MS = 600;
+/** No artificial delay for login retries */
+const AUTH_COOLDOWN_MS = 0;
 
 /** Password strength checker */
 function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
@@ -45,6 +46,20 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp, session, isCollegeEmail } = useAuth();
+
+  // Warm backend so first login isn't delayed by cold starts.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_BASE}/health`, {
+      method: "GET",
+      signal: controller.signal,
+      cache: "no-store",
+    }).catch(() => {
+      // Ignore warm-up failures; login request will handle real errors.
+    });
+
+    return () => controller.abort();
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {

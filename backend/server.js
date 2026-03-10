@@ -24,6 +24,7 @@ import reviewRoutes from "./routes/reviews.js";
 import messageRoutes from "./routes/messages.js";
 import orderRoutes from "./routes/orders.js";
 import chatbotRoutes from "./routes/chatbot.js";
+import { query } from "./db.js";
 
 dotenv.config();
 
@@ -133,6 +134,10 @@ io.on("connection", (socket) => {
 
 server.listen(PORT, () => {
   console.log(`🚀 RE-BOOK-1 Backend running on http://localhost:${PORT}`);
+
+  // Warm DB connection at startup to avoid first-request latency spikes.
+  query("SELECT 1")
+    .catch((err) => console.warn("DB warm-up failed:", err?.message || err));
 });
 
 export default app;
