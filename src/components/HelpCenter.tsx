@@ -49,11 +49,11 @@ const HelpCenter = ({ variant = "profile", className }: HelpCenterProps) => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
               transition={{ duration: 0.18 }}
-              className="fixed left-1/2 top-1/2 z-[61] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 glass-card border border-border/60 rounded-2xl p-4 sm:p-5"
+              className="fixed left-1/2 top-1/2 z-[61] w-[86vw] max-w-sm max-h-[70vh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 glass-card border border-border/60 rounded-2xl p-3.5 sm:p-4"
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <h3 className="font-display text-lg font-semibold text-foreground">Help Centre</h3>
+                  <h3 className="font-display text-base sm:text-lg font-semibold text-foreground">Help Centre</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                     If you face any issue in the website, contact the admin directly.
                   </p>
@@ -67,7 +67,7 @@ const HelpCenter = ({ variant = "profile", className }: HelpCenterProps) => {
                 </button>
               </div>
 
-              <div className="rounded-xl border border-border/60 bg-background/60 p-3 sm:p-4 space-y-1.5">
+              <div className="rounded-xl border border-border/60 bg-background/60 p-3 sm:p-3.5 space-y-1.5">
                 <p className="text-xs text-muted-foreground">Admin Name</p>
                 <p className="text-sm sm:text-base font-semibold text-foreground">{ADMIN_NAME}</p>
                 <p className="text-xs text-muted-foreground pt-2">Admin Email</p>
