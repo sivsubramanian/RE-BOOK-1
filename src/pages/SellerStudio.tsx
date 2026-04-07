@@ -151,7 +151,7 @@ const SellerStudio = () => {
         refetchBooks();
       }
     } catch (err: unknown) {
-      toast.error(err.message || "Failed to create listing");
+      toast.error(err instanceof Error ? err.message : "Failed to create listing");
     } finally {
       setSubmitting(false);
     }
@@ -320,7 +320,7 @@ const SellerStudio = () => {
                 </div>
                 {/* Delete overlay */}
                 <button onClick={() => handleDelete(book.id)}
-                  className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/80 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20">
+                  className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/80 text-red-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-red-500/20">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
                 <input
@@ -335,7 +335,7 @@ const SellerStudio = () => {
                 <button
                   onClick={() => listingImageRefs.current[book.id]?.click()}
                   disabled={updatingImageId === book.id}
-                  className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-background/85 text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background disabled:opacity-100 disabled:cursor-not-allowed"
+                  className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-background/85 text-xs text-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-background disabled:opacity-100 disabled:cursor-not-allowed"
                 >
                   {updatingImageId === book.id ? "Updating..." : "Edit Image"}
                 </button>
@@ -427,7 +427,7 @@ const SellerStudio = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground font-medium mb-1.5 block">Condition</label>
-                    <select value={form.condition} onChange={(e) => setForm(f => ({ ...f, condition: e.target.value as DbBook["condition"] }))}
+                    <select value={form.condition} onChange={(e) => setForm(f => ({ ...f, condition: e.target.value as NewBookForm["condition"] }))}
                       className="w-full px-3 py-2 rounded-xl bg-muted/50 border border-border/50 text-sm text-foreground outline-none focus:border-primary/50">
                       {conditions.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
