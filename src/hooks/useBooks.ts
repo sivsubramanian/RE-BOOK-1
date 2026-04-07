@@ -74,6 +74,12 @@ export function useBooks(filters: BookFilters = {}) {
       if (filters.condition && filters.condition !== "All") {
         filtered = filtered.filter(b => b.condition === filters.condition);
       }
+      if (filters.status) {
+        filtered = filtered.filter(b => b.status === filters.status);
+      }
+      if (filters.sellerId) {
+        filtered = filtered.filter(b => b.seller_id === filters.sellerId);
+      }
       if (filters.minPrice !== undefined) {
         filtered = filtered.filter(b => b.price >= (filters.minPrice || 0));
       }

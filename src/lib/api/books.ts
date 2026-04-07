@@ -7,7 +7,7 @@
  * - Image upload via multer endpoint
  * - View count increment
  */
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import type { DbBook } from "@/types";
 
 /** Allowed image types and max size (5MB) */
@@ -171,6 +171,21 @@ export async function updateBookImage(
 
     return { image_url: data.image_url, error: null };
   } catch (err: unknown) {
+    if (err instanceof ApiError && err.status === 404) {
+      // Backward compatibility: if image-only endpoint is unavailable,
+      // upload first and then patch only image_url via the generic update endpoint.
+      const uploaded = await uploadBookImage(file, "");
+      if (uploaded.error || !uploaded.url) {
+        return { image_url: null, error: uploaded.error || "Image upload failed" };
+      }
+
+      const updated = await updateBook(bookId, { image_url: uploaded.url } as Partial<DbBook>);
+      if (updated.error) {
+        return { image_url: null, error: updated.error };
+      }
+
+      return { image_url: uploaded.url, error: null };
+    }
     return { image_url: null, error: err instanceof Error ? err.message : "Image update failed" };
   }
 }
