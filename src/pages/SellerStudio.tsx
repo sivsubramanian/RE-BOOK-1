@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useBooks } from "@/hooks/useBooks";
 import { useTransactions } from "@/hooks/useTransactions";
-import { createBook, deleteBook, uploadBookImage } from "@/lib/api/books";
+import { createBook, deleteBook, updateBookImage, uploadBookImage } from "@/lib/api/books";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { resolveImageUrl, getFallbackImage } from "@/lib/url";
@@ -61,7 +61,9 @@ const SellerStudio = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [updatingImageId, setUpdatingImageId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const listingImageRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Compute stats from real data
   const stats = useMemo(() => {
@@ -86,8 +88,8 @@ const SellerStudio = () => {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error("Only JPEG, PNG, and WebP images are allowed");
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      toast.error("Only JPEG and PNG images are allowed");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -159,6 +161,24 @@ const SellerStudio = () => {
     const { error } = await deleteBook(bookId);
     if (error) toast.error(error);
     else { toast.success("Book deleted"); refetchBooks(); }
+  };
+
+  const handleListingImageUpdate = async (bookId: string, file: File | null) => {
+    if (!file) return;
+    setUpdatingImageId(bookId);
+    try {
+      const { error } = await updateBookImage(bookId, file);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      toast.success("Book image updated");
+      refetchBooks();
+    } finally {
+      const input = listingImageRefs.current[bookId];
+      if (input) input.value = "";
+      setUpdatingImageId(null);
+    }
   };
 
   return (
@@ -296,6 +316,22 @@ const SellerStudio = () => {
                   className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/80 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
+                <input
+                  ref={(el) => { listingImageRefs.current[book.id] = el; }}
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  className="hidden"
+                  onChange={(e) => {
+                    void handleListingImageUpdate(book.id, e.target.files?.[0] || null);
+                  }}
+                />
+                <button
+                  onClick={() => listingImageRefs.current[book.id]?.click()}
+                  disabled={updatingImageId === book.id}
+                  className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-background/85 text-xs text-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background disabled:opacity-100 disabled:cursor-not-allowed"
+                >
+                  {updatingImageId === book.id ? "Updating..." : "Edit Image"}
+                </button>
               </motion.div>
             ))}
           </div>
@@ -330,11 +366,11 @@ const SellerStudio = () => {
                     ) : (
                       <>
                         <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-xs text-muted-foreground">Click to upload (JPEG, PNG, WebP · max 5MB)</p>
+                        <p className="text-xs text-muted-foreground">Click to upload (JPEG, PNG · max 5MB)</p>
                       </>
                     )}
                   </div>
-                  <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp"
+                  <input ref={fileRef} type="file" accept="image/jpeg,image/png"
                     onChange={handleImageSelect} className="hidden" />
                 </div>
 

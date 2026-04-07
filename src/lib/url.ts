@@ -7,23 +7,26 @@ export function getFallbackImage(): string {
 }
 
 export function resolveImageUrl(url?: string | null): string {
-  if (!url) return PLACEHOLDER;
+  const value = (url || "").trim();
+  if (!value) return PLACEHOLDER;
 
-  if (url.startsWith("/uploads/")) {
-    return `${API_ORIGIN}${url}`;
-  }
-
-  if (/^https?:\/\//i.test(url)) {
+  if (/^https?:\/\//i.test(value)) {
     try {
-      const parsed = new URL(url);
-      if (parsed.pathname.startsWith("/uploads/")) {
-        return `${API_ORIGIN}${parsed.pathname}`;
-      }
+      const parsed = new URL(value);
       return parsed.toString();
     } catch {
       return PLACEHOLDER;
     }
   }
 
-  return url;
+  // Legacy local-upload paths are no longer served.
+  if (value.startsWith("/uploads/")) {
+    return PLACEHOLDER;
+  }
+
+  if (value.startsWith("/")) {
+    return `${API_ORIGIN}${value}`;
+  }
+
+  return value;
 }

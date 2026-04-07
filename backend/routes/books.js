@@ -9,10 +9,19 @@
  * POST   /api/books/:id/view – Increment view count
  */
 import { Router } from "express";
+import multer from "multer";
 import { query } from "../db.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
+import upload from "../middleware/upload.js";
 
 const router = Router();
+
+function normalizeImageUrl(imageUrl) {
+  if (typeof imageUrl !== "string") return "";
+  const value = imageUrl.trim();
+  if (!value || value.startsWith("/uploads/")) return "";
+  return value;
+}
 
 /** GET /api/books – List with filters and pagination */
 router.get("/", optionalAuth, async (req, res) => {
@@ -144,6 +153,7 @@ router.get("/:id", optionalAuth, async (req, res) => {
 router.post("/", requireAuth, async (req, res) => {
   try {
     const { title, author, description, department, semester, condition, price, image_url } = req.body;
+    const normalizedImageUrl = normalizeImageUrl(image_url);
 
     if (!title?.trim() || !author?.trim()) {
       return res.status(400).json({ error: "Title and author are required" });
@@ -153,7 +163,7 @@ router.post("/", requireAuth, async (req, res) => {
       `INSERT INTO books (title, author, description, department, semester, condition, price, image_url, seller_id, status, views_count)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'available', 0)
        RETURNING *`,
-      [title.trim(), author.trim(), description || "", department, semester, condition, price, image_url || "", req.user.id]
+      [title.trim(), author.trim(), description || "", department, semester, condition, price, normalizedImageUrl, req.user.id]
     );
 
     // Fetch with seller info
@@ -183,6 +193,35 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
+/** PUT /api/books/:id/image – Update only book image (owner only) */
+router.put("/:id/image", requireAuth, upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No image uploaded" });
+    }
+
+    const existing = await query("SELECT seller_id FROM books WHERE id = $1", [req.params.id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+    if (existing.rows[0].seller_id !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Not authorized to update this book image" });
+    }
+
+    const imageUrl = normalizeImageUrl(req.file.path);
+    if (!imageUrl) {
+      return res.status(400).json({ error: "Invalid uploaded image URL" });
+    }
+
+    await query("UPDATE books SET image_url = $1 WHERE id = $2", [imageUrl, req.params.id]);
+
+    res.json({ message: "Image updated successfully", image_url: imageUrl });
+  } catch (err) {
+    console.error("Update book image error:", err);
+    res.status(500).json({ error: "Failed to update book image" });
+  }
+});
+
 /** PUT /api/books/:id – Update book (owner only) */
 router.put("/:id", requireAuth, async (req, res) => {
   try {
@@ -205,7 +244,7 @@ router.put("/:id", requireAuth, async (req, res) => {
     if (semester !== undefined) { updates.push(`semester = $${idx++}`); values.push(semester); }
     if (condition !== undefined) { updates.push(`condition = $${idx++}`); values.push(condition); }
     if (price !== undefined) { updates.push(`price = $${idx++}`); values.push(price); }
-    if (image_url !== undefined) { updates.push(`image_url = $${idx++}`); values.push(image_url); }
+    if (image_url !== undefined) { updates.push(`image_url = $${idx++}`); values.push(normalizeImageUrl(image_url)); }
     if (status !== undefined) { updates.push(`status = $${idx++}`); values.push(status); }
 
     if (updates.length === 0) return res.status(400).json({ error: "No fields to update" });
@@ -246,6 +285,20 @@ router.post("/:id/view", async (req, res) => {
     console.error("View increment error:", err);
     res.status(500).json({ error: "Failed to increment views" });
   }
+});
+
+// Multer error handling for image update endpoint
+router.use((err, _req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ error: "Image must be less than 5MB" });
+    }
+    return res.status(400).json({ error: err.message });
+  }
+  if (err?.message === "Only JPEG and PNG images are allowed") {
+    return res.status(400).json({ error: err.message });
+  }
+  return next(err);
 });
 
 export default router;

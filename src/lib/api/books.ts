@@ -11,7 +11,7 @@ import { apiFetch } from "@/lib/api";
 import type { DbBook } from "@/types";
 
 /** Allowed image types and max size (5MB) */
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export interface BookFilters {
@@ -126,7 +126,7 @@ export async function uploadBookImage(
 ): Promise<{ url: string | null; error: string | null }> {
   // Validate file type
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    return { url: null, error: "Only JPEG, PNG, and WebP images are allowed" };
+    return { url: null, error: "Only JPEG and PNG images are allowed" };
   }
   // Validate file size
   if (file.size > MAX_IMAGE_SIZE) {
@@ -145,5 +145,32 @@ export async function uploadBookImage(
     return { url: data.url, error: null };
   } catch (err: unknown) {
     return { url: null, error: err instanceof Error ? err.message : "Upload failed" };
+  }
+}
+
+/** Validate and update only an existing book image */
+export async function updateBookImage(
+  bookId: string,
+  file: File
+): Promise<{ image_url: string | null; error: string | null }> {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return { image_url: null, error: "Only JPEG and PNG images are allowed" };
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    return { image_url: null, error: "Image must be less than 5MB" };
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const data = await apiFetch<{ image_url: string }>(`/books/${bookId}/image`, {
+      method: "PUT",
+      body: formData,
+    });
+
+    return { image_url: data.image_url, error: null };
+  } catch (err: unknown) {
+    return { image_url: null, error: err instanceof Error ? err.message : "Image update failed" };
   }
 }

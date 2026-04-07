@@ -7,10 +7,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import path from "path";
-import fs from "fs";
 import http from "http";
-import { fileURLToPath } from "url";
 import { Server as SocketIOServer } from "socket.io";
 
 import authRoutes from "./routes/auth.js";
@@ -27,11 +24,6 @@ import chatbotRoutes from "./routes/chatbot.js";
 import { query } from "./db.js";
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsDir = path.join(__dirname, "uploads");
-const placeholderPath = path.join(__dirname, "..", "public", "placeholder.svg");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -59,26 +51,6 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: "10mb" }));
-
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Serve uploaded images with placeholder fallback when file is missing.
-app.get("/uploads/:filename", (req, res) => {
-  const fileName = path.basename(req.params.filename || "");
-  const filePath = path.join(uploadsDir, fileName);
-
-  if (fileName && fs.existsSync(filePath)) {
-    return res.sendFile(filePath);
-  }
-
-  if (fs.existsSync(placeholderPath)) {
-    return res.status(200).sendFile(placeholderPath);
-  }
-
-  return res.status(404).json({ error: "Image not found" });
-});
 
 // ── Routes ──────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
