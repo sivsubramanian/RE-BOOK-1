@@ -19,8 +19,16 @@ const router = Router();
 function normalizeImageUrl(imageUrl) {
   if (typeof imageUrl !== "string") return "";
   const value = imageUrl.trim();
-  if (!value || value.startsWith("/uploads/")) return "";
-  return value.replace(/^http:\/\//i, "https://");
+  if (!value) return "";
+
+  const normalizedPath = value.replace(/\\/g, "/");
+
+  // Keep local upload paths for compatibility in environments that still use them.
+  if (normalizedPath.startsWith("/uploads/") || normalizedPath.startsWith("uploads/")) {
+    return normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`;
+  }
+
+  return normalizedPath.replace(/^http:\/\//i, "https://");
 }
 
 /** GET /api/books – List with filters and pagination */

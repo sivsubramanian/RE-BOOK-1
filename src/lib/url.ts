@@ -7,7 +7,7 @@ export function getFallbackImage(): string {
 }
 
 export function resolveImageUrl(url?: string | null): string {
-  const value = (url || "").trim();
+  const value = (url || "").trim().replace(/\\/g, "/");
   if (!value) return PLACEHOLDER;
 
   if (/^https?:\/\//i.test(value)) {
@@ -22,9 +22,10 @@ export function resolveImageUrl(url?: string | null): string {
     }
   }
 
-  // Legacy local-upload paths are no longer served.
-  if (value.startsWith("/uploads/")) {
-    return PLACEHOLDER;
+  // Support local-upload paths where backend serves /uploads.
+  if (value.startsWith("/uploads/") || value.startsWith("uploads/")) {
+    const path = value.startsWith("/") ? value : `/${value}`;
+    return `${API_ORIGIN}${path}`;
   }
 
   if (value.startsWith("/")) {
