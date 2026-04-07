@@ -20,7 +20,7 @@ function normalizeImageUrl(imageUrl) {
   if (typeof imageUrl !== "string") return "";
   const value = imageUrl.trim();
   if (!value || value.startsWith("/uploads/")) return "";
-  return value;
+  return value.replace(/^http:\/\//i, "https://");
 }
 
 /** GET /api/books – List with filters and pagination */

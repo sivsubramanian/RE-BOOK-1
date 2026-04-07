@@ -13,6 +13,9 @@ export function resolveImageUrl(url?: string | null): string {
   if (/^https?:\/\//i.test(value)) {
     try {
       const parsed = new URL(value);
+      if (parsed.protocol === "http:") {
+        parsed.protocol = "https:";
+      }
       return parsed.toString();
     } catch {
       return PLACEHOLDER;

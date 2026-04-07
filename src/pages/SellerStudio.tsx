@@ -62,6 +62,7 @@ const SellerStudio = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [updatingImageId, setUpdatingImageId] = useState<string | null>(null);
+  const [imageOverrides, setImageOverrides] = useState<Record<string, string>>({});
   const fileRef = useRef<HTMLInputElement>(null);
   const listingImageRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -167,10 +168,16 @@ const SellerStudio = () => {
     if (!file) return;
     setUpdatingImageId(bookId);
     try {
-      const { error } = await updateBookImage(bookId, file);
+      const { image_url, error } = await updateBookImage(bookId, file);
       if (error) {
         toast.error(error);
         return;
+      }
+      if (image_url) {
+        setImageOverrides((prev) => ({
+          ...prev,
+          [bookId]: `${resolveImageUrl(image_url)}?v=${Date.now()}`,
+        }));
       }
       toast.success("Book image updated");
       refetchBooks();
@@ -289,7 +296,7 @@ const SellerStudio = () => {
                 className="glass-card-hover rounded-xl sm:rounded-2xl overflow-hidden group relative">
                 <Link to={`/book/${book.id}`}>
                   <img
-                    src={resolveImageUrl(book.image_url || (book as any).image)}
+                    src={imageOverrides[book.id] || resolveImageUrl(book.image_url || (book as any).image)}
                     alt={book.title}
                     onError={(e) => {
                       e.currentTarget.src = getFallbackImage();
